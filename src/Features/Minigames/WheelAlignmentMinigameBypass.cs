@@ -20,12 +20,10 @@ namespace Cms21GameplayPlus
         [HarmonyPostfix]
         public static void ShowPostfix(WheelsAlignmentWindow __instance)
         {
-            if (!MinigameBypassFeature.IsEnabled || __instance == null ||
+            if (!MinigameBypassFeature.IsWheelAlignmentEnabled || __instance == null ||
                 __instance.carLoader == null)
                 return;
 
-            ModLogger.Log("[Minigames] Bypassing wheel alignment.",
-                Types.LoggingLevels.Debug);
             __instance.carLoader.WheelsAlignment = new WheelsAlignment {
                 FL = 0, FR = 0, RL = 0, RR = 0
             };
@@ -40,7 +38,7 @@ namespace Cms21GameplayPlus
             yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(0.5f);
 
-            if (!MinigameBypassFeature.IsEnabled || window == null ||
+            if (!MinigameBypassFeature.IsWheelAlignmentEnabled || window == null ||
                 !window.isActiveAndEnabled ||
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name !=
                     sceneName)

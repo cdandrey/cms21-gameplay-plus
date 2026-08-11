@@ -20,12 +20,10 @@ namespace Cms21GameplayPlus
         [HarmonyPostfix]
         public static void ShowPostfix(LampAlignmentWindow __instance)
         {
-            if (!MinigameBypassFeature.IsEnabled || __instance == null ||
+            if (!MinigameBypassFeature.IsHeadlampAlignmentEnabled || __instance == null ||
                 __instance.carLoader == null)
                 return;
 
-            ModLogger.Log("[Minigames] Bypassing headlamp alignment.",
-                Types.LoggingLevels.Debug);
             __instance.carLoader.HeadlampLeftAlignment =
                 new HeadlampAlignment { Horizontal = 0, Vertical = 0 };
             __instance.carLoader.HeadlampRightAlignment =
@@ -41,7 +39,7 @@ namespace Cms21GameplayPlus
             yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(0.5f);
 
-            if (!MinigameBypassFeature.IsEnabled || window == null ||
+            if (!MinigameBypassFeature.IsHeadlampAlignmentEnabled || window == null ||
                 !window.isActiveAndEnabled ||
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name !=
                     sceneName)

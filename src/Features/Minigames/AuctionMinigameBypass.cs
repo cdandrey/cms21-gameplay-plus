@@ -20,7 +20,7 @@ namespace Cms21GameplayPlus
         [HarmonyPostfix]
         public static void OpenPostfix(AuctionBidding __instance)
         {
-            if (!MinigameBypassFeature.IsEnabled || __instance == null)
+            if (!MinigameBypassFeature.IsAuctionEnabled || __instance == null)
                 return;
 
             __instance.bidTime = 0.1f;
@@ -28,15 +28,17 @@ namespace Cms21GameplayPlus
                 return;
             __instance.console.ClearConsole();
             __instance.console.AddLine(BuildInfo.Name +
-                " bypassMinigames enabled");
+                " bypassAuctionMinigame enabled");
         }
 
         [HarmonyPatch(typeof(AuctionBidding), nameof(AuctionBidding.StartAuction))]
         [HarmonyPostfix]
         public static void StartAuctionPostfix(AuctionBidding __instance)
         {
-            if (MinigameBypassFeature.IsEnabled && __instance != null)
-                MelonCoroutines.Start(CompleteAuction(__instance));
+            if (!MinigameBypassFeature.IsAuctionEnabled || __instance == null)
+                return;
+
+            MelonCoroutines.Start(CompleteAuction(__instance));
         }
 
         private static IEnumerator CompleteAuction(AuctionBidding bidding)
@@ -44,17 +46,11 @@ namespace Cms21GameplayPlus
             const int maximumFrames = 6000;
             int frames = 0;
             while (bidding != null && bidding.isActiveAndEnabled &&
-                MinigameBypassFeature.IsEnabled && !bidding.auctionFinished &&
+                MinigameBypassFeature.IsAuctionEnabled && !bidding.auctionFinished &&
                 frames < maximumFrames) {
                 bidding.BidAction();
                 frames++;
                 yield return new WaitForEndOfFrame();
-            }
-
-            if (bidding != null && bidding.isActiveAndEnabled &&
-                MinigameBypassFeature.IsEnabled && !bidding.auctionFinished) {
-                ModLogger.Log("[Minigames] Auction bypass reached its wait limit.",
-                    Types.LoggingLevels.Warning);
             }
         }
     }

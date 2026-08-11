@@ -32,11 +32,9 @@ namespace Cms21GameplayPlus
 
         private static void ApplySuccessfulTune(TuningBar tuningBar)
         {
-            if (!MinigameBypassFeature.IsEnabled || tuningBar.carbTuning)
+            if (!MinigameBypassFeature.IsEcuTuningEnabled || tuningBar.carbTuning)
                 return;
 
-            ModLogger.Log("[Minigames] Bypassing ECU tuning.",
-                Types.LoggingLevels.Debug);
             Il2CppStructArray<short> values = new Il2CppStructArray<short>(5);
             for (int i = 0; i < values.Length; i++)
                 values[i] = 6;

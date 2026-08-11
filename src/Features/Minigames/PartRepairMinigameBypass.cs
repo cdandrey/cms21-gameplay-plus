@@ -21,11 +21,9 @@ namespace Cms21GameplayPlus
         [HarmonyPostfix]
         public static void StartMiniGamePostfix(RepairPartWindow __instance)
         {
-            if (!MinigameBypassFeature.IsEnabled)
+            if (!MinigameBypassFeature.IsPartRepairEnabled)
                 return;
 
-            ModLogger.Log("[Minigames] Bypassing part repair.",
-                Types.LoggingLevels.Debug);
             __instance.ProcessGameResult(BarType.Success);
             __instance.CancelMiniGameAction();
         }

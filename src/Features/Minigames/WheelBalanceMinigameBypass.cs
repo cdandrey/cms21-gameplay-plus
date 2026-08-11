@@ -26,10 +26,8 @@ namespace Cms21GameplayPlus
         [HarmonyPostfix]
         public static void StartMiniGamePostfix(WheelBalanceWindow __instance)
         {
-            if (!MinigameBypassFeature.IsEnabled || __instance == null)
+            if (!MinigameBypassFeature.IsWheelBalanceEnabled || __instance == null)
                 return;
-            ModLogger.Log("[Minigames] Bypassing wheel balancing.",
-                Types.LoggingLevels.Debug);
             MelonCoroutines.Start(CompleteAfterDelay(__instance));
         }
 
@@ -41,7 +39,7 @@ namespace Cms21GameplayPlus
             yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(0.5f);
 
-            if (!MinigameBypassFeature.IsEnabled || window == null ||
+            if (!MinigameBypassFeature.IsWheelBalanceEnabled || window == null ||
                 !window.isActiveAndEnabled ||
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name !=
                     sceneName)
@@ -71,7 +69,7 @@ namespace Cms21GameplayPlus
             yield return new WaitForFixedUpdate();
             yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(0.5f);
-            if (MinigameBypassFeature.IsEnabled && logic != null &&
+            if (MinigameBypassFeature.IsWheelBalanceEnabled && logic != null &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ==
                     sceneName)
                 logic.balanceCanceled = false;

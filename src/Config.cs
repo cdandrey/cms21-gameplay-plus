@@ -10,8 +10,20 @@ namespace Cms21GameplayPlus
 {
     public sealed class Settings
     {
-        [Tomlet.Attributes.TomlInlineComment("Skip supported repair, tuning, auction, balance and alignment minigames")]
-        public bool bypassMinigames = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the part-repair minigame")]
+        public bool bypassPartRepairMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the wheel-balancing minigame")]
+        public bool bypassWheelBalanceMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the wheel-alignment minigame")]
+        public bool bypassWheelAlignmentMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the headlamp-alignment minigame")]
+        public bool bypassHeadlampAlignmentMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the auction minigame")]
+        public bool bypassAuctionMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the carburetor-tuning minigame")]
+        public bool bypassCarburetorTuningMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Skip the ECU-tuning minigame")]
+        public bool bypassEcuTuningMinigame = false;
         [Tomlet.Attributes.TomlInlineComment("Allow repairing drum brakes on the brake lathe")]
         public bool allowBrakeLatheFixDrumBrake = true;
         [Tomlet.Attributes.TomlInlineComment("Force the junkyard generator to use its maximum car percentage")]

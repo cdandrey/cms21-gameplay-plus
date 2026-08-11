@@ -70,7 +70,13 @@ dependency on CMS21 Gameplay+.
 
 | In-game setting | Config flag | Default | Detailed behavior |
 |---|---|---:|---|
-| **Bypass minigames** | `bypassMinigames` | `false` | Skips the supported wheel-balance, part-repair, wheel-alignment, headlamp-alignment, auction, carburetor-tuning and ECU-tuning minigames. Each supported activity has an isolated patch but all are gated by this one opt-in switch. |
+| **Bypass part repair minigame** | `bypassPartRepairMinigame` | `false` | Automatically completes the part-repair minigame after it starts. |
+| **Bypass wheel balancing minigame** | `bypassWheelBalanceMinigame` | `false` | Marks the wheel as balanced and closes the balancing minigame. |
+| **Bypass wheel alignment minigame** | `bypassWheelAlignmentMinigame` | `false` | Sets all four wheel-alignment values to the successful position and closes the minigame. |
+| **Bypass headlamp alignment minigame** | `bypassHeadlampAlignmentMinigame` | `false` | Sets both headlamp-alignment values to the successful position and closes the minigame. |
+| **Bypass auction minigame** | `bypassAuctionMinigame` | `false` | Automatically performs bidding until the auction finishes. |
+| **Bypass carburetor tuning minigame** | `bypassCarburetorTuningMinigame` | `false` | Completes carburetor tuning after the first tuning adjustment. |
+| **Bypass ECU tuning minigame** | `bypassEcuTuningMinigame` | `false` | Completes ECU tuning after the first tuning adjustment. |
 | **Repair brake drums** | `allowBrakeLatheFixDrumBrake` | `true` | Adds supported brake drums to the brake-lathe selection and allows them to be repaired there. When CMS21 UI+ is installed, the optional integration also exposes the same effective repairable status to its filters and wrench badges. Disabling this switch removes the additional brake-lathe eligibility. |
 
 ### Interface and state
@@ -125,7 +131,10 @@ generated file.
 
 CMS21 Gameplay+ retains the following feature concepts from QoLmod by **Meitzi**:
 
-- minigame bypasses: `bypassMinigames`;
+- minigame bypasses: `bypassPartRepairMinigame`, `bypassWheelBalanceMinigame`,
+  `bypassWheelAlignmentMinigame`, `bypassHeadlampAlignmentMinigame`,
+  `bypassAuctionMinigame`, `bypassCarburetorTuningMinigame`,
+  `bypassEcuTuningMinigame`;
 - brake-drum repair on the brake lathe: `allowBrakeLatheFixDrumBrake`;
 - maximum junkyard vehicle generation and expanded auction pools:
   `junkyardVehicleMaximumCars`, `expandedAuctionCarPool`;
