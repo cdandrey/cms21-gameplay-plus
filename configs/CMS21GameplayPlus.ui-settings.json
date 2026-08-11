@@ -1,0 +1,204 @@
+{
+  "modId": "CMS21GameplayPlus",
+  "displayName": "CMS21 Gameplay+",
+  "displayNameKey": "LOC_CMS21GameplayPlus_DisplayName",
+  "config": {
+    "path": "CMS21GameplayPlus.cfg",
+    "format": "toml",
+    "section": "CMS21GameplayPlus.Settings"
+  },
+  "groups": [
+    {
+      "id": "inventory",
+      "order": 10,
+      "nameKey": "LOC_CMS21GameplayPlus_Group_inventory",
+      "name": "Inventory and warehouse"
+    },
+    {
+      "id": "gameplay",
+      "order": 20,
+      "nameKey": "LOC_CMS21GameplayPlus_Group_gameplay",
+      "name": "Gameplay"
+    },
+    {
+      "id": "garage",
+      "order": 30,
+      "nameKey": "LOC_CMS21GameplayPlus_Group_garage",
+      "name": "Garage"
+    },
+    {
+      "id": "locations",
+      "order": 40,
+      "nameKey": "LOC_CMS21GameplayPlus_Group_locations",
+      "name": "Locations"
+    }
+  ],
+  "settings": [
+    {
+      "id": "FID_IncludeWarehousePartsInMountSelection",
+      "key": "includeWarehousePartsInMountSelection",
+      "group": "inventory",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 10,
+      "nameKey": "LOC_SettingIncludeWarehousePartsInMountSelectionName",
+      "descriptionKey": "LOC_SettingIncludeWarehousePartsInMountSelectionDescription"
+    },
+    {
+      "id": "FID_IncludeWarehousePartsInWheelStations",
+      "key": "includeWarehousePartsInWheelStations",
+      "group": "inventory",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 20,
+      "nameKey": "LOC_SettingIncludeWarehousePartsInWheelStationsName",
+      "descriptionKey": "LOC_SettingIncludeWarehousePartsInWheelStationsDescription"
+    },
+    {
+      "id": "FID_IncludeWarehousePartsInSpringClamp",
+      "key": "includeWarehousePartsInSpringClamp",
+      "group": "inventory",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 30,
+      "nameKey": "LOC_SettingIncludeWarehousePartsInSpringClampName",
+      "descriptionKey": "LOC_SettingIncludeWarehousePartsInSpringClampDescription"
+    },
+    {
+      "id": "FID_BypassMinigames",
+      "key": "bypassMinigames",
+      "group": "gameplay",
+      "type": "boolean",
+      "default": false,
+      "applyMode": "restartGame",
+      "order": 10,
+      "nameKey": "LOC_SettingBypassMinigamesName",
+      "descriptionKey": "LOC_SettingBypassMinigamesDescription"
+    },
+    {
+      "id": "FID_AllowBrakeLatheFixDrumBrake",
+      "key": "allowBrakeLatheFixDrumBrake",
+      "group": "gameplay",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 20,
+      "nameKey": "LOC_SettingAllowBrakeLatheFixDrumBrakeName",
+      "descriptionKey": "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription"
+    },
+    {
+      "id": "FID_RememberGarageDoorState",
+      "key": "rememberGarageDoorState",
+      "group": "garage",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 10,
+      "nameKey": "LOC_SettingRememberGarageDoorStateName",
+      "descriptionKey": "LOC_SettingRememberGarageDoorStateDescription"
+    },
+    {
+      "id": "FID_RelocateEngineHoistNearStand",
+      "key": "relocateEngineHoistNearStand",
+      "group": "garage",
+      "type": "boolean",
+      "default": false,
+      "applyMode": "restartGame",
+      "order": 20,
+      "nameKey": "LOC_SettingRelocateEngineHoistNearStandName",
+      "descriptionKey": "LOC_SettingRelocateEngineHoistNearStandDescription"
+    },
+    {
+      "id": "FID_JunkyardVehicleMaximumCars",
+      "key": "junkyardVehicleMaximumCars",
+      "group": "locations",
+      "type": "boolean",
+      "default": false,
+      "applyMode": "restartGame",
+      "order": 10,
+      "nameKey": "LOC_SettingJunkyardVehicleMaximumCarsName",
+      "descriptionKey": "LOC_SettingJunkyardVehicleMaximumCarsDescription"
+    },
+    {
+      "id": "FID_ExpandedAuctionCarPool",
+      "key": "expandedAuctionCarPool",
+      "group": "locations",
+      "type": "boolean",
+      "default": false,
+      "applyMode": "restartGame",
+      "order": 20,
+      "nameKey": "LOC_SettingExpandedAuctionCarPoolName",
+      "descriptionKey": "LOC_SettingExpandedAuctionCarPoolDescription"
+    },
+    {
+      "id": "FID_AllowPartsTravelWhenVehicleStorageIsFull",
+      "key": "allowPartsTravelWhenVehicleStorageIsFull",
+      "group": "locations",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "immediate",
+      "order": 30,
+      "nameKey": "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullName",
+      "descriptionKey": "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullDescription"
+    }
+  ],
+  "localization": {
+    "en": {
+      "LOC_CMS21GameplayPlus_DisplayName": "CMS21 Gameplay+",
+      "LOC_CMS21GameplayPlus_Group_inventory": "Inventory and warehouse",
+      "LOC_CMS21GameplayPlus_Group_gameplay": "Gameplay",
+      "LOC_CMS21GameplayPlus_Group_garage": "Garage",
+      "LOC_CMS21GameplayPlus_Group_locations": "Locations",
+      "LOC_SettingIncludeWarehousePartsInMountSelectionName": "Warehouse parts during normal assembly",
+      "LOC_SettingIncludeWarehousePartsInMountSelectionDescription": "Include loose parts and complete assemblies from every unlocked warehouse while assembling vehicles and engines, excluding the tire changer, wheel balancer and spring clamp.",
+      "LOC_SettingIncludeWarehousePartsInWheelStationsName": "Warehouse parts on wheel machines",
+      "LOC_SettingIncludeWarehousePartsInWheelStationsDescription": "Include loose tires, rims and complete wheels from every unlocked warehouse on the tire changer and wheel balancer.",
+      "LOC_SettingIncludeWarehousePartsInSpringClampName": "Warehouse parts on spring clamp",
+      "LOC_SettingIncludeWarehousePartsInSpringClampDescription": "Include loose shock-absorber parts and complete shock absorbers from every unlocked warehouse on the spring clamp.",
+      "LOC_SettingBypassMinigamesName": "Bypass minigames",
+      "LOC_SettingBypassMinigamesDescription": "Skip supported repair, tuning, auction, balance and alignment minigames.",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Repair brake drums",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Allow supported brake drums to be repaired on the brake lathe.",
+      "LOC_SettingRememberGarageDoorStateName": "Remember garage doors",
+      "LOC_SettingRememberGarageDoorStateDescription": "Restore the state of the seven vanilla garage, paint-shop and office doors.",
+      "LOC_SettingRelocateEngineHoistNearStandName": "Relocate engine hoist",
+      "LOC_SettingRelocateEngineHoistNearStandDescription": "Move the vanilla engine hoist next to the engine stand in the normal garage.",
+      "LOC_SettingJunkyardVehicleMaximumCarsName": "Maximum junkyard cars",
+      "LOC_SettingJunkyardVehicleMaximumCarsDescription": "Force the junkyard generator to use its maximum vehicle percentage.",
+      "LOC_SettingExpandedAuctionCarPoolName": "Expanded auction pools",
+      "LOC_SettingExpandedAuctionCarPoolDescription": "Increase normal and salvage auction vehicle pools.",
+      "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullName": "Travel when vehicle storage is full",
+      "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullDescription": "Allow travel to the junkyard and barns when the garage and parking have no free vehicle slots."
+    },
+    "ru": {
+      "LOC_CMS21GameplayPlus_DisplayName": "CMS21 Gameplay+",
+      "LOC_CMS21GameplayPlus_Group_inventory": "Инвентарь и склад",
+      "LOC_CMS21GameplayPlus_Group_gameplay": "Геймплей",
+      "LOC_CMS21GameplayPlus_Group_garage": "Гараж",
+      "LOC_CMS21GameplayPlus_Group_locations": "Локации",
+      "LOC_SettingIncludeWarehousePartsInMountSelectionName": "Детали со склада при обычной сборке",
+      "LOC_SettingIncludeWarehousePartsInMountSelectionDescription": "Добавлять обычные детали и готовые сборки из всех открытых складов при сборке автомобилей и двигателей, кроме шиномонтажного станка, балансировочного стенда и съёмника пружин.",
+      "LOC_SettingIncludeWarehousePartsInWheelStationsName": "Детали со склада на шинных станках",
+      "LOC_SettingIncludeWarehousePartsInWheelStationsDescription": "Добавлять покрышки, диски и колёса в сборе из всех открытых складов на шиномонтажном станке и балансировочном стенде.",
+      "LOC_SettingIncludeWarehousePartsInSpringClampName": "Детали со склада на съёмнике пружин",
+      "LOC_SettingIncludeWarehousePartsInSpringClampDescription": "Добавлять отдельные детали амортизаторов и амортизаторы в сборе из всех открытых складов на съёмнике пружин.",
+      "LOC_SettingBypassMinigamesName": "Пропуск мини-игр",
+      "LOC_SettingBypassMinigamesDescription": "Пропускать поддерживаемые мини-игры ремонта, настройки, аукциона, балансировки и развала-схождения.",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Ремонт тормозных барабанов",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Разрешить ремонт поддерживаемых тормозных барабанов на токарном станке.",
+      "LOC_SettingRememberGarageDoorStateName": "Запоминать двери гаража",
+      "LOC_SettingRememberGarageDoorStateDescription": "Восстанавливать состояние семи штатных дверей гаража, покрасочной и офиса.",
+      "LOC_SettingRelocateEngineHoistNearStandName": "Переместить моторный кран",
+      "LOC_SettingRelocateEngineHoistNearStandDescription": "Переместить штатный моторный кран к стенду двигателя в обычном гараже.",
+      "LOC_SettingJunkyardVehicleMaximumCarsName": "Максимум машин на свалке",
+      "LOC_SettingJunkyardVehicleMaximumCarsDescription": "Принудительно использовать максимальный процент автомобилей при генерации свалки.",
+      "LOC_SettingExpandedAuctionCarPoolName": "Расширенные пулы аукциона",
+      "LOC_SettingExpandedAuctionCarPoolDescription": "Увеличить количество автомобилей на обычном и аварийном аукционах.",
+      "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullName": "Поездки при заполненных местах",
+      "LOC_SettingAllowPartsTravelWhenVehicleStorageIsFullDescription": "Разрешать поездки на авторазборку и в сараи, когда в гараже и на парковке нет свободных мест для автомобилей."
+    }
+  }
+}

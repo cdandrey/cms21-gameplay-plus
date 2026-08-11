@@ -1,0 +1,59 @@
+{
+    // C#: use OmniSharp for the legacy .NET Framework MSBuild project.
+    "dotnet.server.useOmnisharp": true,
+    "omnisharp.enableEditorConfigSupport": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.organizeImportsOnFormat": true,
+
+    "[csharp]": {
+        "editor.defaultFormatter": "ms-dotnettools.csharp",
+        "editor.formatOnSave": false
+    },
+
+    // Editor diagnostics and navigation.
+    "problems.autoReveal": true,
+    "editor.inlayHints.enabled": "off",
+    "editor.links": false,
+    "terminal.integrated.enableFileLinks": "off",
+
+    // Editor appearance.
+    "workbench.editor.labelFormat": "default",
+    "workbench.tree.indent": 20,
+    "workbench.tree.renderIndentGuides": "always",
+    "explorer.compactFolders": false,
+    "explorer.openEditors.sortOrder": "alphabetical",
+    "explorer.autoReveal": true,
+    "window.zoomLevel": 1,
+    "editor.fontFamily": "Consolas, 'Courier New', monospace",
+    "editor.fontSize": 14,
+    "editor.lineHeight": 18,
+    "editor.fontLigatures": false,
+    "terminal.integrated.tabs.enabled": false,
+
+    // Keep generated and source-control directories out of the workspace views.
+    "explorer.autoRevealExclude": {
+        "**/bin/**": true,
+        "**/obj/**": true,
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.vs": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.vs": true
+    },
+    "search.exclude": {
+        "**/bin/**": true,
+        "**/obj/**": true,
+        "**/.git/**": true,
+        "**/.svn/**": true,
+        "**/.vs/**": true
+    },
+
+    "workbench.colorCustomizations": {
+        "list.inactiveSelectionBackground": "#6dc2fa",
+        "list.inactiveSelectionForeground": "#ffffff",
+        "list.focusBackground": "#2e2d2d"
+    }
+}
