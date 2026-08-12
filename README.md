@@ -62,13 +62,58 @@ When `modifyRepairGroups` is enabled and the repairability file itself is enable
 
 - assign exact reserved repair groups;
 - mark listed parts as non-repairable;
-- promote only parts that were originally non-repairable into specialized repair groups;
-- preserve existing repair groups unless an explicit higher-priority rule overrides them.
+- apply one repair-group modifier to every non-priority part in a specialized group;
+- leave a specialized group on its vanilla repair groups by setting its modifier to `-1`.
 
-Reserved priority groups take precedence over specialized groups. The file is applied after game
-part data becomes available. Because it updates the effective game repair groups, other systems
-that read those groups can observe the resulting repairability without requiring a direct
-dependency on CMS21 Gameplay+.
+For specialized groups, `repairGroup = -1` disables that group's modifier and keeps each part's
+default game value, `0` forces the whole group to non-repairable, and `1..7` forces the whole
+group to the selected repair group. `NonRepairable` and exact `Repairability1..Repairability5`
+entries have higher priority and are therefore not changed by a specialized-group modifier.
+
+The file is applied after game part data becomes available. Because it updates the effective game
+repair groups, other systems that read those groups can observe the resulting repairability
+without requiring a direct dependency on CMS21 Gameplay+.
+
+#### Repairability classification policy
+
+The custom table is intended to make repairability follow the physical role of a part rather than
+to make the game uniformly easier. The classification uses these rules:
+
+- **Consumables and normal replacement items stay non-repairable.** Parts whose real service
+  procedure is replacement rather than restoration are treated as consumables. This includes
+  friction and sealing elements, filters, belts, gaskets and seals, bearings, glass, lamps, small
+  rubber parts, clips and clamps, fuses and relays, and other comparable wear or one-time-use
+  items. A part does not become repairable merely because it is made of metal.
+- **Sealed or non-serviceable assemblies are non-repairable when replacement is the plausible
+  workshop action.** Selected electronic, electrical, hydraulic and accessory assemblies are
+  explicitly forced to group `0` when the configured rules treat the complete unit as something
+  that should be replaced rather than rebuilt at the game's repair bench.
+- **Substantial rigid components may be made repairable when restoration is plausible.** Cast,
+  forged, machined or fabricated parts such as engine structural components, suspension arms and
+  hubs, serviceable covers and brackets, manifolds and exhaust components can be assigned to the
+  repair group that best matches the game's repair mechanics. Metal water-pump and fan pulleys
+  are treated as serviceable rigid components and are explicitly assigned to repair group `4`.
+- **Material and function matter more than the wording of the part name.** Two parts both called
+  a cover, housing or bracket do not have to share the same result when one is a serviceable metal
+  component and the other is a disposable, plastic, decorative or protective piece. The same
+  distinction is used for hoses, reservoirs, tensioners and similar mixed categories.
+- **Equivalent parts are kept consistent across engine and vehicle variants.** When several IDs
+  represent the same physical type of component, they should normally receive the same treatment.
+  Exceptions are deliberate and should reflect a real difference in construction or function,
+  not the vehicle on which the part happens to appear.
+- **Vanilla repairability is preserved when a specialized modifier is disabled.** A specialized
+  group with `repairGroup = -1` leaves every non-priority part on its default game value. Values
+  `0..7` are deliberate whole-group overrides, so already repairable parts are reassigned as well.
+  Exact `Repairability1..Repairability5` entries and `NonRepairable` remain higher-priority
+  per-part overrides. The leaf-spring pad and U-bolt are kept in `Repairability1`, preserving their
+  vanilla repair group `1` even though `SuspensionArmsAndHubs` uses modifier `3`.
+- **Repair-group numbers are implementation categories, not a repairability score.** `0` means
+  non-repairable. Non-zero values select the game's corresponding repair behavior; a larger number
+  does not mean that a part is more repairable or more durable.
+
+The practical default for an uncertain specialized group is therefore `repairGroup = -1`: keep
+the game's original behavior until the parts can be classified confidently by construction,
+service role and consistency with equivalent parts.
 
 ### Jobs and controls
 

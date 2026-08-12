@@ -83,7 +83,7 @@ namespace Cms21GameplayPlus
 
                     if (group == null)
                         continue;
-                    if (group.repairGroup != forcedRepairGroup && !(forcedRepairGroup == 0 && group.repairGroup == -1)) {
+                    if (group.repairGroup != forcedRepairGroup) {
                         invalidPriorityGroups++;
                         ModLogger.Log("[Repairability] Reserved group '" + group.name + "' uses fixed RepairGroup " + forcedRepairGroup + "; configured value " + group.repairGroup + " is ignored.", Types.LoggingLevels.Warning);
                     }
@@ -159,27 +159,25 @@ namespace Cms21GameplayPlus
 
                 HashSet<string> specializedPartIDs = new HashSet<string>(StringComparer.Ordinal);
                 int activeSpecializedGroups = 0;
-                int promoted = 0;
-                int disabled = 0;
-                int preserved = 0;
+                int assigned = 0;
                 int unchanged = 0;
                 int duplicate = 0;
                 int skippedByPriority = 0;
                 int invalidGroups = 0;
 
                 foreach (RepairabilityFileGroup group in specializedGroups) {
-                    if (group == null || group.repairGroup == 0)
+                    if (group == null)
                         continue;
                     if (group.repairGroup < -1 || group.repairGroup > MaximumSupportedRepairGroup) {
                         invalidGroups++;
                         ModLogger.Log("[Repairability] Group '" + (group?.name ?? "") + "' has invalid repairGroup " + group?.repairGroup + ". Allowed values are -1 and 0..7.", Types.LoggingLevels.Warning);
                         continue;
                     }
+                    if (group.repairGroup == -1)
+                        continue;
 
                     activeSpecializedGroups++;
-                    int groupPromoted = 0;
-                    int groupDisabled = 0;
-                    int groupPreserved = 0;
+                    int groupAssigned = 0;
                     int groupUnchanged = 0;
                     int groupMissing = 0;
                     int groupSkippedByPriority = 0;
@@ -206,32 +204,21 @@ namespace Cms21GameplayPlus
                             continue;
                         }
 
-                        if (group.repairGroup == -1) {
-                            if (part.RepairGroup != 0) {
-                                part.RepairGroup = 0;
-                                disabled++;
-                                groupDisabled++;
-                            } else {
-                                unchanged++;
-                                groupUnchanged++;
-                            }
+                        if (part.RepairGroup == group.repairGroup) {
+                            unchanged++;
+                            groupUnchanged++;
                             continue;
                         }
 
-                        if (part.RepairGroup == 0) {
-                            part.RepairGroup = group.repairGroup;
-                            promoted++;
-                            groupPromoted++;
-                        } else {
-                            preserved++;
-                            groupPreserved++;
-                        }
+                        part.RepairGroup = group.repairGroup;
+                        assigned++;
+                        groupAssigned++;
                     }
 
-                    ModLogger.Log("[Repairability] " + group.name + ": mode=" + group.repairGroup + ", promoted=" + groupPromoted + ", disabled=" + groupDisabled + ", preserved=" + groupPreserved + ", unchanged=" + groupUnchanged + ", skippedByPriority=" + groupSkippedByPriority + ", missing=" + groupMissing);
+                    ModLogger.Log("[Repairability] " + group.name + ": mode=" + group.repairGroup + ", assigned=" + groupAssigned + ", unchanged=" + groupUnchanged + ", skippedByPriority=" + groupSkippedByPriority + ", missing=" + groupMissing);
                 }
 
-                ModLogger.Log("[Repairability] Applied once. Priority: nonRepairable=" + nonRepairablePartIDs.Count + ", forced=" + forcedRepairGroups.Count + ", forcedDisabled=" + forcedDisabled + ", forcedAssigned=" + forcedAssigned + ", forcedUnchanged=" + forcedUnchanged + ", priorityDuplicates=" + priorityDuplicates + ", priorityConflicts=" + priorityConflicts + ", invalidPriorityGroups=" + invalidPriorityGroups + ". Specialized: groups=" + specializedGroups.Count + ", active=" + activeSpecializedGroups + ", promoted=" + promoted + ", disabled=" + disabled + ", preserved=" + preserved + ", unchanged=" + unchanged + ", skippedByPriority=" + skippedByPriority + ", duplicates=" + duplicate + ", invalidGroups=" + invalidGroups + ", missing=" + missing + ".");
+                ModLogger.Log("[Repairability] Applied once. Priority: nonRepairable=" + nonRepairablePartIDs.Count + ", forced=" + forcedRepairGroups.Count + ", forcedDisabled=" + forcedDisabled + ", forcedAssigned=" + forcedAssigned + ", forcedUnchanged=" + forcedUnchanged + ", priorityDuplicates=" + priorityDuplicates + ", priorityConflicts=" + priorityConflicts + ", invalidPriorityGroups=" + invalidPriorityGroups + ". Specialized: groups=" + specializedGroups.Count + ", active=" + activeSpecializedGroups + ", assigned=" + assigned + ", unchanged=" + unchanged + ", skippedByPriority=" + skippedByPriority + ", duplicates=" + duplicate + ", invalidGroups=" + invalidGroups + ", missing=" + missing + ".");
                 if (missingExamples.Count > 0)
                     ModLogger.Log("[Repairability] First missing IDs: " + string.Join(", ", missingExamples.ToArray()), Types.LoggingLevels.Warning);
 
