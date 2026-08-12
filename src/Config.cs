@@ -24,6 +24,8 @@ namespace Cms21GameplayPlus
         public bool bypassCarburetorTuningMinigame = false;
         [Tomlet.Attributes.TomlInlineComment("Skip the ECU-tuning minigame")]
         public bool bypassEcuTuningMinigame = false;
+        [Tomlet.Attributes.TomlInlineComment("Apply Repairability.cfg changes to game repair groups")]
+        public bool modifyRepairGroups = true;
         [Tomlet.Attributes.TomlInlineComment("Allow repairing drum brakes on the brake lathe")]
         public bool allowBrakeLatheFixDrumBrake = true;
         [Tomlet.Attributes.TomlInlineComment("Force the junkyard generator to use its maximum car percentage")]

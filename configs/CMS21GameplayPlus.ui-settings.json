@@ -79,7 +79,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 10,
       "nameKey": "LOC_SettingBypassPartRepairMinigameName",
       "descriptionKey": "LOC_SettingBypassPartRepairMinigameDescription"
@@ -90,7 +90,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 20,
       "nameKey": "LOC_SettingBypassWheelBalanceMinigameName",
       "descriptionKey": "LOC_SettingBypassWheelBalanceMinigameDescription"
@@ -101,7 +101,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 30,
       "nameKey": "LOC_SettingBypassWheelAlignmentMinigameName",
       "descriptionKey": "LOC_SettingBypassWheelAlignmentMinigameDescription"
@@ -112,7 +112,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 40,
       "nameKey": "LOC_SettingBypassHeadlampAlignmentMinigameName",
       "descriptionKey": "LOC_SettingBypassHeadlampAlignmentMinigameDescription"
@@ -123,7 +123,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 50,
       "nameKey": "LOC_SettingBypassAuctionMinigameName",
       "descriptionKey": "LOC_SettingBypassAuctionMinigameDescription"
@@ -134,7 +134,7 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 60,
       "nameKey": "LOC_SettingBypassCarburetorTuningMinigameName",
       "descriptionKey": "LOC_SettingBypassCarburetorTuningMinigameDescription"
@@ -145,10 +145,21 @@
       "group": "minigames",
       "type": "boolean",
       "default": false,
-      "applyMode": "restartGame",
+      "applyMode": "immediate",
       "order": 70,
       "nameKey": "LOC_SettingBypassEcuTuningMinigameName",
       "descriptionKey": "LOC_SettingBypassEcuTuningMinigameDescription"
+    },
+    {
+      "id": "FID_ModifyRepairGroups",
+      "key": "modifyRepairGroups",
+      "group": "gameplay",
+      "type": "boolean",
+      "default": true,
+      "applyMode": "restartGame",
+      "order": 10,
+      "nameKey": "LOC_SettingModifyRepairGroupsName",
+      "descriptionKey": "LOC_SettingModifyRepairGroupsDescription"
     },
     {
       "id": "FID_AllowBrakeLatheFixDrumBrake",
@@ -245,6 +256,8 @@
       "LOC_SettingBypassCarburetorTuningMinigameDescription": "Complete carburetor tuning after the first tuning adjustment.",
       "LOC_SettingBypassEcuTuningMinigameName": "Bypass ECU tuning minigame",
       "LOC_SettingBypassEcuTuningMinigameDescription": "Complete ECU tuning after the first tuning adjustment.",
+      "LOC_SettingModifyRepairGroupsName": "Modify repair groups",
+      "LOC_SettingModifyRepairGroupsDescription": "Apply Repairability.cfg rules that change the repair groups of configured parts.",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Repair brake drums",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Allow supported brake drums to be repaired on the brake lathe.",
       "LOC_SettingRememberGarageDoorStateName": "Remember garage doors",
@@ -285,6 +298,8 @@
       "LOC_SettingBypassCarburetorTuningMinigameDescription": "Завершать настройку карбюратора после первого изменения значения.",
       "LOC_SettingBypassEcuTuningMinigameName": "Пропуск мини-игры настройки ECU",
       "LOC_SettingBypassEcuTuningMinigameDescription": "Завершать настройку ECU после первого изменения значения.",
+      "LOC_SettingModifyRepairGroupsName": "Изменять ремонтные группы",
+      "LOC_SettingModifyRepairGroupsDescription": "Применять правила Repairability.cfg, изменяющие ремонтные группы указанных деталей.",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Ремонт тормозных барабанов",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Разрешить ремонт поддерживаемых тормозных барабанов на токарном станке.",
       "LOC_SettingRememberGarageDoorStateName": "Запоминать двери гаража",

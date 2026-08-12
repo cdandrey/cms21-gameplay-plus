@@ -22,33 +22,17 @@ namespace Cms21GameplayPlus
     [HarmonyPatch]
     public static class WheelBalanceMinigameBypass
     {
-        [HarmonyPatch(typeof(WheelBalanceWindow), nameof(WheelBalanceWindow.StartMiniGame))]
+        [HarmonyPatch(typeof(WheelBalanceWindow), nameof(WheelBalanceWindow.Show))]
         [HarmonyPostfix]
-        public static void StartMiniGamePostfix(WheelBalanceWindow __instance)
+        public static void ShowPostfix(WheelBalanceWindow __instance)
         {
             if (!MinigameBypassFeature.IsWheelBalanceEnabled || __instance == null)
                 return;
-            MelonCoroutines.Start(CompleteAfterDelay(__instance));
-        }
-
-        private static IEnumerator CompleteAfterDelay(WheelBalanceWindow window)
-        {
-            string sceneName = UnityEngine.SceneManagement.SceneManager
-                .GetActiveScene().name;
-            yield return new WaitForFixedUpdate();
-            yield return new WaitForEndOfFrame();
-            yield return new WaitForSeconds(0.5f);
-
-            if (!MinigameBypassFeature.IsWheelBalanceEnabled || window == null ||
-                !window.isActiveAndEnabled ||
-                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name !=
-                    sceneName)
-                yield break;
 
             WheelBalancerLogic logic = GameObject.FindObjectOfType<WheelBalancerLogic>();
             if (logic == null || logic.groupOnWheelBalancer == null ||
                 logic.groupOnWheelBalancer.ItemList == null)
-                yield break;
+                return;
 
             foreach (Item item in logic.groupOnWheelBalancer.ItemList) {
                 if (item == null)
@@ -62,13 +46,18 @@ namespace Cms21GameplayPlus
                 };
             }
 
-            if (window == null || !window.isActiveAndEnabled)
-                yield break;
-            window.CancelAction();
+            __instance.CancelAction();
+            MelonCoroutines.Start(ResetCanceledAfterDelay(logic));
+        }
 
+        private static IEnumerator ResetCanceledAfterDelay(WheelBalancerLogic logic)
+        {
+            string sceneName = UnityEngine.SceneManagement.SceneManager
+                .GetActiveScene().name;
             yield return new WaitForFixedUpdate();
             yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(0.5f);
+
             if (MinigameBypassFeature.IsWheelBalanceEnabled && logic != null &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ==
                     sceneName)

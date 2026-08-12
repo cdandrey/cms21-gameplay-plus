@@ -23,8 +23,8 @@ removed feature lists are summarized in [QoLmod origin](#qolmod-origin).
 
 All switches below are stored under `[CMS21GameplayPlus.Settings]` in
 `CMS21GameplayPlus.cfg`. Displayed names and apply modes are taken from the in-game settings
-manifest. `allowPartsTravelWhenVehicleStorageIsFull` currently uses `immediate`; the remaining
-listed switches use `restartGame`.
+manifest. The seven minigame bypass switches and `allowPartsTravelWhenVehicleStorageIsFull`
+use `immediate`; the remaining listed switches use `restartGame`.
 
 ### Inventory
 
@@ -53,8 +53,12 @@ consumed; absence of UI+ is a no-op.
 
 #### Repairability configuration
 
-`Repairability.cfg` is a separate data file rather than an in-game boolean setting. When enabled
-inside that file, it can:
+`modifyRepairGroups` controls whether `Repairability.cfg` is applied at all. It defaults to `true`
+and requires a game restart when changed. When disabled, CMS21 Gameplay+ leaves the game's
+repair-group values unchanged.
+
+When `modifyRepairGroups` is enabled and the repairability file itself is enabled,
+`Repairability.cfg` can:
 
 - assign exact reserved repair groups;
 - mark listed parts as non-repairable;
@@ -77,6 +81,7 @@ dependency on CMS21 Gameplay+.
 | **Bypass auction minigame** | `bypassAuctionMinigame` | `false` | Automatically performs bidding until the auction finishes. |
 | **Bypass carburetor tuning minigame** | `bypassCarburetorTuningMinigame` | `false` | Completes carburetor tuning after the first tuning adjustment. |
 | **Bypass ECU tuning minigame** | `bypassEcuTuningMinigame` | `false` | Completes ECU tuning after the first tuning adjustment. |
+| **Modify repair groups** | `modifyRepairGroups` | `true` | Applies `Repairability.cfg` to the game part data. Disabling it leaves the game repair groups unchanged and skips the custom repairability rules. |
 | **Repair brake drums** | `allowBrakeLatheFixDrumBrake` | `true` | Adds supported brake drums to the brake-lathe selection and allows them to be repaired there. When CMS21 UI+ is installed, the optional integration also exposes the same effective repairable status to its filters and wrench badges. Disabling this switch removes the additional brake-lathe eligibility. |
 
 ### Interface and state

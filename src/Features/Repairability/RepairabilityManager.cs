@@ -37,6 +37,13 @@ namespace Cms21GameplayPlus
             if (applied)
                 return true;
 
+            if (Main.SettingsEntry == null)
+                return false;
+            if (!Main.SettingsEntry.Value.modifyRepairGroups) {
+                applied = true;
+                return true;
+            }
+
             if (!File.Exists(GlobalConfig.cfgRepairability)) {
                 ModLogger.Log("[Repairability] Config file not found: " + GlobalConfig.cfgRepairability, Types.LoggingLevels.Warning);
                 applied = true;
