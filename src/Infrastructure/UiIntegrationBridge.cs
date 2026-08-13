@@ -14,9 +14,29 @@ namespace Cms21GameplayPlus
         private const string UiAssemblyName = "CMS21UIPlus";
         private static MethodInfo notifyItemRemoved;
         private static MethodInfo notifyGroupRemoved;
+        private const string BrakeLatheDrumDependency =
+            "BrakeLatheDrumRepairable";
+        private const string BrakeLatheGearsDependency =
+            "BrakeLatheGearsRepairable";
+        private const string BrakeLatheClutchDiscsDependency =
+            "BrakeLatheClutchDiscsRepairable";
+        private const string BrakeLathePulleysDependency =
+            "BrakeLathePulleysRepairable";
+        private const string BrakeLatheDrumDefaultDependency =
+            "BrakeLatheDrumRepairableDefault";
+        private const string BrakeLatheGearsDefaultDependency =
+            "BrakeLatheGearsRepairableDefault";
+        private const string BrakeLatheClutchDiscsDefaultDependency =
+            "BrakeLatheClutchDiscsRepairableDefault";
+        private const string BrakeLathePulleysDefaultDependency =
+            "BrakeLathePulleysRepairableDefault";
+
         private static MethodInfo setBrakeDrumRepairable;
+        private static MethodInfo setSettingDependencyStatus;
+        private static MethodInfo setSettingDependencyAvailable;
         private static bool cacheMethodsResolved;
         private static bool repairabilityMethodResolved;
+        private static bool dependencyMethodResolved;
 
         public static void NotifyItemRemoved(Item item)
         {
@@ -38,6 +58,29 @@ namespace Cms21GameplayPlus
         {
             EnsureRepairabilityMethod();
             InvokeSafely(setBrakeDrumRepairable, repairable);
+        }
+
+        public static void SyncBrakeLatheRepairabilityDependencies(
+            BrakeLatheRepairabilityStatus drum,
+            BrakeLatheRepairabilityStatus gears,
+            BrakeLatheRepairabilityStatus clutchDiscs,
+            BrakeLatheRepairabilityStatus pulleys,
+            BrakeLatheRepairabilityStatus defaultDrum,
+            BrakeLatheRepairabilityStatus defaultGears,
+            BrakeLatheRepairabilityStatus defaultClutchDiscs,
+            BrakeLatheRepairabilityStatus defaultPulleys)
+        {
+            EnsureDependencyMethod();
+            SetDependency(BrakeLatheDrumDependency, drum);
+            SetDependency(BrakeLatheGearsDependency, gears);
+            SetDependency(BrakeLatheClutchDiscsDependency, clutchDiscs);
+            SetDependency(BrakeLathePulleysDependency, pulleys);
+            SetDependency(BrakeLatheDrumDefaultDependency, defaultDrum);
+            SetDependency(BrakeLatheGearsDefaultDependency, defaultGears);
+            SetDependency(BrakeLatheClutchDiscsDefaultDependency,
+                defaultClutchDiscs);
+            SetDependency(BrakeLathePulleysDefaultDependency,
+                defaultPulleys);
         }
 
         private static void EnsureCacheMethods()
@@ -72,12 +115,45 @@ namespace Cms21GameplayPlus
             repairabilityMethodResolved = true;
         }
 
-        private static void InvokeSafely(MethodInfo method, object value)
+        private static void EnsureDependencyMethod()
+        {
+            if (dependencyMethodResolved)
+                return;
+
+            Type registryType = Type.GetType(
+                "Cms21UiPlus.ModSettingDependencyRegistry, " +
+                UiAssemblyName, false);
+            if (registryType == null)
+                return;
+
+            setSettingDependencyStatus = registryType.GetMethod(
+                "SetStatus", BindingFlags.Public | BindingFlags.Static);
+            setSettingDependencyAvailable = registryType.GetMethod(
+                "SetAvailable", BindingFlags.Public | BindingFlags.Static);
+            dependencyMethodResolved = true;
+        }
+
+        private static void SetDependency(string dependencyId,
+            BrakeLatheRepairabilityStatus status)
+        {
+            if (setSettingDependencyStatus != null) {
+                InvokeSafely(setSettingDependencyStatus,
+                    BuildInfo.TechnicalName, dependencyId, status.ToString());
+                return;
+            }
+
+            InvokeSafely(setSettingDependencyAvailable,
+                BuildInfo.TechnicalName, dependencyId,
+                BrakeLatheExtensionsFeature.IsAvailable(status));
+        }
+
+        private static void InvokeSafely(MethodInfo method,
+            params object[] values)
         {
             if (method == null)
                 return;
             try {
-                method.Invoke(null, new object[] { value });
+                method.Invoke(null, values);
             } catch (Exception exception) {
                 ModLogger.Log("[UIIntegration] Optional UI integration call failed." +
                     Environment.NewLine + exception, Types.LoggingLevels.Warning);

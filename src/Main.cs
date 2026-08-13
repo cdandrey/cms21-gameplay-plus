@@ -37,6 +37,7 @@ namespace Cms21GameplayPlus
         private static bool dataInitializationWorkerRunning;
         private static bool repairabilityInitialized;
         private static bool profileMemoryDirty;
+        private static MelonPreferences_Category settingsPreferences;
 
         public static MelonPreferences_Entry<Settings> SettingsEntry;
         public static Types.ProfileMemoryData ProfileMemory = new Types.ProfileMemoryData();
@@ -53,7 +54,8 @@ namespace Cms21GameplayPlus
             bool melonDebug = Environment.GetCommandLineArgs().Contains("--melonloader.debug");
             LoadSettings();
             UiIntegrationBridge.SyncBrakeDrumRepairability(
-                SettingsEntry.Value.allowBrakeLatheFixDrumBrake);
+                SettingsEntry.Value.allowBrakeLatheFixDrumBrake &&
+                RepairabilityManager.BrakeDrumLatheAvailable);
             LoadProfileMemory();
             ModLogger.ConfigureUnityLogForwarding(melonDebug);
             ApplyHarmonyPatches();
@@ -181,14 +183,22 @@ namespace Cms21GameplayPlus
         private static void LoadSettings()
         {
             bool fileExisted = File.Exists(GlobalConfig.cfgFile);
-            MelonPreferences_Category preferences =
+            settingsPreferences =
                 MelonPreferences.CreateCategory(BuildInfo.TechnicalName);
-            preferences.SetFilePath(GlobalConfig.cfgFile, autoload: false);
-            SettingsEntry = preferences.CreateEntry<Settings>("Settings", new Settings(),
-                null, BuildInfo.ShortName + " feature switches");
-            preferences.LoadFromFile();
+            settingsPreferences.SetFilePath(GlobalConfig.cfgFile,
+                autoload: false);
+            SettingsEntry = settingsPreferences.CreateEntry<Settings>(
+                "Settings", new Settings(), null,
+                BuildInfo.ShortName + " feature switches");
+            settingsPreferences.LoadFromFile();
             if (!fileExisted)
-                preferences.SaveToFile(false);
+                settingsPreferences.SaveToFile(false);
+        }
+
+        internal static void SaveSettings()
+        {
+            if (settingsPreferences != null)
+                settingsPreferences.SaveToFile(false);
         }
 
         private static void LoadProfileMemory()

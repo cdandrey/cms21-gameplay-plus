@@ -15,6 +15,14 @@ using CMS.Containers;
 
 namespace Cms21GameplayPlus
 {
+    internal enum BrakeLatheRepairabilityStatus
+    {
+        Available,
+        Partial,
+        Unavailable,
+        UnavailableByDefault,
+    }
+
     /// <summary>Extends brake-lathe part support and repair behavior.</summary>
     [HarmonyPatch]
     public static class BrakeLatheExtensionsFeature
@@ -66,7 +74,9 @@ namespace Cms21GameplayPlus
             "w12_rolkaWalka"
         };
 
-        private static readonly HashSet<string> FlywheelPartIds = new HashSet<string> {
+        private static readonly HashSet<string> ClutchDiscPartIds = new HashSet<string> {
+            "docisk_sprzegla",
+            "t_docisk_sprzegla",
             "t_v8_kolo_zamachowe",
             "t_w12_kolo_zamachowe",
             "v8_kolo_zamachowe",
@@ -97,9 +107,9 @@ namespace Cms21GameplayPlus
         };
 
         private const float NativeRepairDurationSeconds = 20f;
-        private const float RepairDurationSeconds = 8f;
         private const float NativeMachineAnimationDurationSeconds = 5f;
-        private const float MachineAnimationDurationSeconds = 2f;
+        private const float ImmediateTweenDurationSeconds = 0.0001f;
+        private const int MachineAnimationStepCount = 4;
         private const float NativeCutterTargetZ = 0.2935f;
         private const float NativeReferenceDiameter = 0.31f;
         private const float NativeAdjusterRotationZ = 720f;
@@ -107,7 +117,7 @@ namespace Cms21GameplayPlus
         private const float ProcessingRingHideDelaySeconds = 0.05f;
         private const float GearTargetDiameter = 0.18f;
         private const float PulleyTargetDiameter = 0.20f;
-        private const float FlywheelTargetDiameter = 0.30f;
+        private const float ClutchDiscTargetDiameter = 0.30f;
         private const float MaxModelScaleMultiplier = 8f;
 
         private static int strapInstanceId;
@@ -137,8 +147,11 @@ namespace Cms21GameplayPlus
                     existing.Add(item);
             }
 
+            GameInventory gameInventory = Singleton<GameInventory>.Instance;
             foreach (Item item in __instance.items) {
                 if (!IsEnabledExtraPart(item, settings) ||
+                    !RepairabilityManager.HasRepairGroup(
+                        gameInventory, item.ID) ||
                     item.Condition <= GlobalData.JunkCondition ||
                     item.Condition >= 1f || !existing.Add(item))
                     continue;
@@ -167,19 +180,30 @@ namespace Cms21GameplayPlus
                 !Mathf.Approximately(__1, brakeLathe.Item.Condition))
                 return;
 
-            __3 = RepairDurationSeconds;
+            float machineAnimationDuration =
+                GetMachineAnimationDurationSeconds();
+            float repairDuration = machineAnimationDuration *
+                MachineAnimationStepCount;
+            if (repairDuration <= 0f) {
+                __3 = ImmediateTweenDurationSeconds;
+                CompleteRepairImmediately(brakeLathe);
+                return;
+            }
+
+            __3 = repairDuration;
             if (brakeLathe.shaft != null && brakeLathe.brakeDisc != null) {
                 MelonCoroutines.Start(FadeLatheSoundBeforeStop(
                     brakeLathe, brakeLathe.Item.ID,
-                    brakeLathe.brakeDisc.GetInstanceID()));
+                    brakeLathe.brakeDisc.GetInstanceID(), repairDuration));
             }
         }
 
         private static IEnumerator FadeLatheSoundBeforeStop(
-            BrakeLatheLogic brakeLathe, string itemId, int modelInstanceId)
+            BrakeLatheLogic brakeLathe, string itemId, int modelInstanceId,
+            float repairDuration)
         {
             yield return new WaitForSeconds(
-                RepairDurationSeconds - SoundFadeLeadSeconds);
+                repairDuration - SoundFadeLeadSeconds);
 
             if (!GlobalState.IsGarageSceneActive || brakeLathe == null ||
                 brakeLathe.Item == null || brakeLathe.Item.ID != itemId ||
@@ -203,6 +227,61 @@ namespace Cms21GameplayPlus
                 yield break;
 
             brakeLathe.strap.gameObject.SetActive(false);
+        }
+
+        private static void CompleteRepairImmediately(
+            BrakeLatheLogic brakeLathe)
+        {
+            if (brakeLathe == null || brakeLathe.Item == null)
+                return;
+
+            brakeLathe.Item.Condition = 1f;
+            StopLatheSoundImmediately(brakeLathe);
+            if (brakeLathe.strap != null)
+                brakeLathe.strap.gameObject.SetActive(false);
+
+            if (brakeLathe.brakeDisc != null) {
+                MelonCoroutines.Start(CompleteImmediateRepairCleanup(
+                    brakeLathe, brakeLathe.Item.ID,
+                    brakeLathe.brakeDisc.GetInstanceID()));
+            }
+        }
+
+        private static IEnumerator CompleteImmediateRepairCleanup(
+            BrakeLatheLogic brakeLathe, string itemId, int modelInstanceId)
+        {
+            yield return null;
+            if (!FinalizeImmediateRepair(brakeLathe, itemId, modelInstanceId))
+                yield break;
+
+            yield return new WaitForSeconds(ProcessingRingHideDelaySeconds);
+            FinalizeImmediateRepair(brakeLathe, itemId, modelInstanceId);
+        }
+
+        private static bool FinalizeImmediateRepair(
+            BrakeLatheLogic brakeLathe, string itemId, int modelInstanceId)
+        {
+            if (!GlobalState.IsGarageSceneActive || brakeLathe == null ||
+                brakeLathe.Item == null || brakeLathe.Item.ID != itemId ||
+                brakeLathe.brakeDisc == null ||
+                brakeLathe.brakeDisc.GetInstanceID() != modelInstanceId)
+                return false;
+
+            brakeLathe.Item.Condition = 1f;
+            StopLatheSoundImmediately(brakeLathe);
+            if (brakeLathe.strap != null)
+                brakeLathe.strap.gameObject.SetActive(false);
+            return true;
+        }
+
+        private static void StopLatheSoundImmediately(
+            BrakeLatheLogic brakeLathe)
+        {
+            if (brakeLathe == null || brakeLathe.shaft == null)
+                return;
+            SoundManager soundManager = SoundManager.Get();
+            if (soundManager != null)
+                soundManager.StopLoopSFX(brakeLathe.shaft.gameObject, false);
         }
 
         [HarmonyPatch(typeof(LeanTween), nameof(LeanTween.moveLocalZ),
@@ -230,7 +309,9 @@ namespace Cms21GameplayPlus
                     (NativeReferenceDiameter - targetDiameter) * 0.5f;
             }
 
-            __2 = MachineAnimationDurationSeconds;
+            float duration = GetMachineAnimationDurationSeconds();
+            __2 = duration > 0f
+                ? duration : ImmediateTweenDurationSeconds;
         }
 
         [HarmonyPatch(typeof(LeanTween), nameof(LeanTween.rotateZ),
@@ -251,7 +332,9 @@ namespace Cms21GameplayPlus
                 brakeLathe.adjuster == null || __0 != brakeLathe.adjuster.gameObject)
                 return;
 
-            __2 = MachineAnimationDurationSeconds;
+            float duration = GetMachineAnimationDurationSeconds();
+            __2 = duration > 0f
+                ? duration : ImmediateTweenDurationSeconds;
         }
 
         [HarmonyPatch(typeof(BrakeLatheLogic), nameof(BrakeLatheLogic.SetItem),
@@ -278,6 +361,27 @@ namespace Cms21GameplayPlus
             ConfigureProcessingRing(__instance, targetDiameter);
         }
 
+        private static float GetMachineAnimationDurationSeconds()
+        {
+            BrakeLatheProcessingDuration value = Main.SettingsEntry != null
+                ? Main.SettingsEntry.Value.brakeLatheProcessingDuration
+                : BrakeLatheProcessingDuration.Medium;
+            switch (value) {
+                case BrakeLatheProcessingDuration.Off:
+                    return 0f;
+                case BrakeLatheProcessingDuration.Fast:
+                    return 1f;
+                case BrakeLatheProcessingDuration.Medium:
+                    return 2f;
+                case BrakeLatheProcessingDuration.Slow:
+                    return 3f;
+                case BrakeLatheProcessingDuration.Default:
+                    return 5f;
+                default:
+                    return 2f;
+            }
+        }
+
         private static bool TryGetExtraPartTargetDiameter(string itemId,
             out float targetDiameter)
         {
@@ -285,8 +389,8 @@ namespace Cms21GameplayPlus
                 targetDiameter = GearTargetDiameter;
                 return true;
             }
-            if (FlywheelPartIds.Contains(itemId)) {
-                targetDiameter = FlywheelTargetDiameter;
+            if (ClutchDiscPartIds.Contains(itemId)) {
+                targetDiameter = ClutchDiscTargetDiameter;
                 return true;
             }
             if (PulleyPartIds.Contains(itemId)) {
@@ -483,6 +587,118 @@ namespace Cms21GameplayPlus
             return hasBounds;
         }
 
+        internal static IEnumerable<string> GetSupportedRepairabilityPartIds()
+        {
+            yield return "pokrywaBeben_1";
+            foreach (string partId in GearPartIds)
+                yield return partId;
+            foreach (string partId in ClutchDiscPartIds)
+                yield return partId;
+            foreach (string partId in PulleyPartIds)
+                yield return partId;
+        }
+
+        internal static void GetRepairabilityStatuses(
+            GameInventory inventory, IDictionary<string, int> repairGroups,
+            bool useDefaultRepairability,
+            out BrakeLatheRepairabilityStatus drumStatus,
+            out BrakeLatheRepairabilityStatus gearsStatus,
+            out BrakeLatheRepairabilityStatus clutchDiscsStatus,
+            out BrakeLatheRepairabilityStatus pulleysStatus)
+        {
+            drumStatus = GetRepairabilityStatus(inventory,
+                new string[] { "pokrywaBeben_1" }, useDefaultRepairability,
+                repairGroups);
+            gearsStatus = GetRepairabilityStatus(inventory, GearPartIds,
+                useDefaultRepairability, repairGroups);
+            clutchDiscsStatus = GetRepairabilityStatus(inventory,
+                ClutchDiscPartIds, useDefaultRepairability, repairGroups);
+            pulleysStatus = GetRepairabilityStatus(inventory, PulleyPartIds,
+                useDefaultRepairability, repairGroups);
+        }
+
+        internal static bool SynchronizeRepairabilitySettings(
+            GameInventory inventory, out BrakeLatheRepairabilityStatus drumStatus,
+            out BrakeLatheRepairabilityStatus gearsStatus,
+            out BrakeLatheRepairabilityStatus clutchDiscsStatus,
+            out BrakeLatheRepairabilityStatus pulleysStatus)
+        {
+            bool useDefaultRepairability = Main.SettingsEntry != null &&
+                !Main.SettingsEntry.Value.modifyRepairGroups;
+            GetRepairabilityStatuses(inventory, null,
+                useDefaultRepairability, out drumStatus, out gearsStatus,
+                out clutchDiscsStatus, out pulleysStatus);
+
+            if (Main.SettingsEntry == null)
+                return false;
+
+            Settings settings = Main.SettingsEntry.Value;
+            bool changed = false;
+            if (IsUnavailable(drumStatus) &&
+                settings.allowBrakeLatheFixDrumBrake) {
+                settings.allowBrakeLatheFixDrumBrake = false;
+                changed = true;
+            }
+            if (IsUnavailable(gearsStatus) && settings.allowBrakeLatheFixGears) {
+                settings.allowBrakeLatheFixGears = false;
+                changed = true;
+            }
+            if (IsUnavailable(clutchDiscsStatus) &&
+                settings.allowBrakeLatheFixFlywheel) {
+                settings.allowBrakeLatheFixFlywheel = false;
+                changed = true;
+            }
+            if (IsUnavailable(pulleysStatus) &&
+                settings.allowBrakeLatheFixPulleys) {
+                settings.allowBrakeLatheFixPulleys = false;
+                changed = true;
+            }
+            return changed;
+        }
+
+        internal static bool IsAvailable(BrakeLatheRepairabilityStatus status)
+        {
+            return !IsUnavailable(status);
+        }
+
+        private static bool IsUnavailable(
+            BrakeLatheRepairabilityStatus status)
+        {
+            return status == BrakeLatheRepairabilityStatus.Unavailable ||
+                status == BrakeLatheRepairabilityStatus.UnavailableByDefault;
+        }
+
+        private static BrakeLatheRepairabilityStatus GetRepairabilityStatus(
+            GameInventory inventory, IEnumerable<string> partIds,
+            bool useDefaultRepairability,
+            IDictionary<string, int> repairGroups)
+        {
+            int existing = 0;
+            int repairable = 0;
+            foreach (string partId in partIds) {
+                if (inventory == null ||
+                    !inventory.ExistsInPartProperty(partId))
+                    continue;
+                existing++;
+                int repairGroup;
+                bool hasRepairGroup = repairGroups != null &&
+                    repairGroups.TryGetValue(partId, out repairGroup)
+                        ? repairGroup != 0
+                        : RepairabilityManager.HasRepairGroup(inventory,
+                            partId);
+                if (hasRepairGroup)
+                    repairable++;
+            }
+
+            if (existing == 0 || repairable == existing)
+                return BrakeLatheRepairabilityStatus.Available;
+            if (repairable > 0)
+                return BrakeLatheRepairabilityStatus.Partial;
+            return useDefaultRepairability
+                ? BrakeLatheRepairabilityStatus.UnavailableByDefault
+                : BrakeLatheRepairabilityStatus.Unavailable;
+        }
+
         private static bool IsEnabledExtraPart(Item item, Settings settings)
         {
             if (item == null)
@@ -491,7 +707,8 @@ namespace Cms21GameplayPlus
                 return true;
             if (settings.allowBrakeLatheFixGears && GearPartIds.Contains(item.ID))
                 return true;
-            if (settings.allowBrakeLatheFixFlywheel && FlywheelPartIds.Contains(item.ID))
+            if (settings.allowBrakeLatheFixFlywheel &&
+                ClutchDiscPartIds.Contains(item.ID))
                 return true;
             return settings.allowBrakeLatheFixPulleys && PulleyPartIds.Contains(item.ID);
         }

@@ -7,6 +7,32 @@
     "format": "toml",
     "section": "CMS21GameplayPlus.Settings"
   },
+  "enums": [
+    {
+      "id": "BrakeLatheDuration",
+      "ids": [
+        "Off",
+        "Fast",
+        "Medium",
+        "Slow",
+        "Default"
+      ],
+      "en": [
+        "Off",
+        "Fast",
+        "Medium",
+        "Slow",
+        "Default"
+      ],
+      "ru": [
+        "Откл",
+        "Быстро",
+        "Средне",
+        "Медленно",
+        "Дефолтно"
+      ]
+    }
+  ],
   "groups": [
     {
       "id": "inventory",
@@ -170,7 +196,13 @@
       "applyMode": "restartGame",
       "order": 20,
       "nameKey": "LOC_SettingAllowBrakeLatheFixDrumBrakeName",
-      "descriptionKey": "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription"
+      "descriptionKey": "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription",
+      "dependency": "BrakeLatheDrumRepairable",
+      "dependencySwitchKey": "modifyRepairGroups",
+      "dependencyWhenFalse": "BrakeLatheDrumRepairableDefault",
+      "dependencyWarningKey": "LOC_SettingBrakeLatheRepairabilityWarning",
+      "dependencyPartialWarningKey": "LOC_SettingBrakeLatheRepairabilityPartialWarning",
+      "dependencyDefaultWarningKey": "LOC_SettingBrakeLatheRepairabilityDefaultWarning"
     },
     {
       "id": "FID_AllowBrakeLatheFixGears",
@@ -181,7 +213,13 @@
       "applyMode": "restartGame",
       "order": 30,
       "nameKey": "LOC_SettingAllowBrakeLatheFixGearsName",
-      "descriptionKey": "LOC_SettingAllowBrakeLatheFixGearsDescription"
+      "descriptionKey": "LOC_SettingAllowBrakeLatheFixGearsDescription",
+      "dependency": "BrakeLatheGearsRepairable",
+      "dependencySwitchKey": "modifyRepairGroups",
+      "dependencyWhenFalse": "BrakeLatheGearsRepairableDefault",
+      "dependencyWarningKey": "LOC_SettingBrakeLatheRepairabilityWarning",
+      "dependencyPartialWarningKey": "LOC_SettingBrakeLatheRepairabilityPartialWarning",
+      "dependencyDefaultWarningKey": "LOC_SettingBrakeLatheRepairabilityDefaultWarning"
     },
     {
       "id": "FID_AllowBrakeLatheFixFlywheel",
@@ -192,7 +230,13 @@
       "applyMode": "restartGame",
       "order": 40,
       "nameKey": "LOC_SettingAllowBrakeLatheFixFlywheelName",
-      "descriptionKey": "LOC_SettingAllowBrakeLatheFixFlywheelDescription"
+      "descriptionKey": "LOC_SettingAllowBrakeLatheFixFlywheelDescription",
+      "dependency": "BrakeLatheClutchDiscsRepairable",
+      "dependencySwitchKey": "modifyRepairGroups",
+      "dependencyWhenFalse": "BrakeLatheClutchDiscsRepairableDefault",
+      "dependencyWarningKey": "LOC_SettingBrakeLatheRepairabilityWarning",
+      "dependencyPartialWarningKey": "LOC_SettingBrakeLatheRepairabilityPartialWarning",
+      "dependencyDefaultWarningKey": "LOC_SettingBrakeLatheRepairabilityDefaultWarning"
     },
     {
       "id": "FID_AllowBrakeLatheFixPulleys",
@@ -203,7 +247,25 @@
       "applyMode": "restartGame",
       "order": 50,
       "nameKey": "LOC_SettingAllowBrakeLatheFixPulleysName",
-      "descriptionKey": "LOC_SettingAllowBrakeLatheFixPulleysDescription"
+      "descriptionKey": "LOC_SettingAllowBrakeLatheFixPulleysDescription",
+      "dependency": "BrakeLathePulleysRepairable",
+      "dependencySwitchKey": "modifyRepairGroups",
+      "dependencyWhenFalse": "BrakeLathePulleysRepairableDefault",
+      "dependencyWarningKey": "LOC_SettingBrakeLatheRepairabilityWarning",
+      "dependencyPartialWarningKey": "LOC_SettingBrakeLatheRepairabilityPartialWarning",
+      "dependencyDefaultWarningKey": "LOC_SettingBrakeLatheRepairabilityDefaultWarning"
+    },
+    {
+      "id": "FID_BrakeLatheProcessingDuration",
+      "key": "brakeLatheProcessingDuration",
+      "group": "gameplay",
+      "type": "enum",
+      "enum": "BrakeLatheDuration",
+      "default": "Medium",
+      "applyMode": "immediate",
+      "order": 60,
+      "nameKey": "LOC_SettingBrakeLatheProcessingDurationName",
+      "descriptionKey": "LOC_SettingBrakeLatheProcessingDurationDescription"
     },
     {
       "id": "FID_RememberGarageDoorState",
@@ -289,16 +351,21 @@
       "LOC_SettingBypassCarburetorTuningMinigameDescription": "Complete carburetor tuning after the first tuning adjustment.",
       "LOC_SettingBypassEcuTuningMinigameName": "Bypass ECU tuning minigame",
       "LOC_SettingBypassEcuTuningMinigameDescription": "Complete ECU tuning after the first tuning adjustment.",
-      "LOC_SettingModifyRepairGroupsName": "Modify repair groups",
+      "LOC_SettingModifyRepairGroupsName": "Enable part repairability modifiers",
       "LOC_SettingModifyRepairGroupsDescription": "Apply Repairability.cfg rules that change the repair groups of configured parts.",
-      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Repair brake drums",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Repair brake drums on the brake lathe",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Allow supported brake drums to be repaired on the brake lathe.",
-      "LOC_SettingAllowBrakeLatheFixGearsName": "Repair gears",
+      "LOC_SettingAllowBrakeLatheFixGearsName": "Repair gears on the brake lathe",
       "LOC_SettingAllowBrakeLatheFixGearsDescription": "Allow supported gears and timing sprockets to be repaired on the brake lathe.",
-      "LOC_SettingAllowBrakeLatheFixFlywheelName": "Repair flywheels",
-      "LOC_SettingAllowBrakeLatheFixFlywheelDescription": "Allow supported flywheels to be repaired on the brake lathe.",
-      "LOC_SettingAllowBrakeLatheFixPulleysName": "Repair pulleys",
+      "LOC_SettingAllowBrakeLatheFixFlywheelName": "Repair flywheels and pressure plates on the brake lathe",
+      "LOC_SettingAllowBrakeLatheFixFlywheelDescription": "Allow supported flywheels and clutch pressure plates to be repaired on the brake lathe.",
+      "LOC_SettingAllowBrakeLatheFixPulleysName": "Repair pulleys on the brake lathe",
       "LOC_SettingAllowBrakeLatheFixPulleysDescription": "Allow supported water-pump, fan and crankshaft pulleys to be repaired on the brake lathe.",
+      "LOC_SettingBrakeLatheRepairabilityWarning": "Unavailable: none of the supported parts in this group are currently repairable.",
+      "LOC_SettingBrakeLatheRepairabilityPartialWarning": "Some parts in this group are non-repairable; this setting does not apply to them.",
+      "LOC_SettingBrakeLatheRepairabilityDefaultWarning": "Unavailable. Repairability modification is disabled. By default, this group of parts is non-repairable.",
+      "LOC_SettingBrakeLatheProcessingDurationName": "Brake lathe processing duration",
+      "LOC_SettingBrakeLatheProcessingDurationDescription": "Set the brake-lathe processing duration or skip its animation entirely.",
       "LOC_SettingRememberGarageDoorStateName": "Remember garage doors",
       "LOC_SettingRememberGarageDoorStateDescription": "Restore the state of the seven vanilla garage, paint-shop and office doors.",
       "LOC_SettingRelocateEngineHoistNearStandName": "Relocate engine hoist",
@@ -337,16 +404,21 @@
       "LOC_SettingBypassCarburetorTuningMinigameDescription": "Завершать настройку карбюратора после первого изменения значения.",
       "LOC_SettingBypassEcuTuningMinigameName": "Пропуск мини-игры настройки ECU",
       "LOC_SettingBypassEcuTuningMinigameDescription": "Завершать настройку ECU после первого изменения значения.",
-      "LOC_SettingModifyRepairGroupsName": "Изменять ремонтные группы",
+      "LOC_SettingModifyRepairGroupsName": "Включить модификаторы ремонтопригодности деталей",
       "LOC_SettingModifyRepairGroupsDescription": "Применять правила Repairability.cfg, изменяющие ремонтные группы указанных деталей.",
-      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Ремонт тормозных барабанов",
+      "LOC_SettingAllowBrakeLatheFixDrumBrakeName": "Ремонт тормозных барабанов на токарном станке",
       "LOC_SettingAllowBrakeLatheFixDrumBrakeDescription": "Разрешить ремонт поддерживаемых тормозных барабанов на токарном станке.",
-      "LOC_SettingAllowBrakeLatheFixGearsName": "Ремонт шестерен",
+      "LOC_SettingAllowBrakeLatheFixGearsName": "Ремонт шестерен на токарном станке",
       "LOC_SettingAllowBrakeLatheFixGearsDescription": "Разрешить ремонт поддерживаемых шестерен и звездочек ГРМ на токарном станке.",
-      "LOC_SettingAllowBrakeLatheFixFlywheelName": "Ремонт маховиков",
-      "LOC_SettingAllowBrakeLatheFixFlywheelDescription": "Разрешить ремонт поддерживаемых маховиков на токарном станке.",
-      "LOC_SettingAllowBrakeLatheFixPulleysName": "Ремонт шкивов",
+      "LOC_SettingAllowBrakeLatheFixFlywheelName": "Ремонт маховиков и нажимных дисков на токарном станке",
+      "LOC_SettingAllowBrakeLatheFixFlywheelDescription": "Разрешить ремонт поддерживаемых маховиков и нажимных дисков сцепления на токарном станке.",
+      "LOC_SettingAllowBrakeLatheFixPulleysName": "Ремонт шкивов на токарном станке",
       "LOC_SettingAllowBrakeLatheFixPulleysDescription": "Разрешить ремонт поддерживаемых шкивов водяного насоса, вентилятора и коленвала на токарном станке.",
+      "LOC_SettingBrakeLatheRepairabilityWarning": "Недоступно: среди поддерживаемых деталей этой группы сейчас нет ремонтопригодных.",
+      "LOC_SettingBrakeLatheRepairabilityPartialWarning": "Часть деталей группы не ремонтопригодны, на них не действует этот флаг.",
+      "LOC_SettingBrakeLatheRepairabilityDefaultWarning": "Недоступно. Модификация ремонтопригодности выключена. По дефолту эта группа деталей не ремонтопригодна.",
+      "LOC_SettingBrakeLatheProcessingDurationName": "Длительность обработки на токарном станке",
+      "LOC_SettingBrakeLatheProcessingDurationDescription": "Задать длительность обработки на токарном станке или полностью пропустить его анимацию.",
       "LOC_SettingRememberGarageDoorStateName": "Запоминать двери гаража",
       "LOC_SettingRememberGarageDoorStateDescription": "Восстанавливать состояние семи штатных дверей гаража, покрасочной и офиса.",
       "LOC_SettingRelocateEngineHoistNearStandName": "Переместить моторный кран",

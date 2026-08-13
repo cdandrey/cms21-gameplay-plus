@@ -32,6 +32,10 @@ namespace Cms21GameplayPlus
         private const string NonRepairableGroupName = "NonRepairable";
         private const string ForcedRepairabilityGroupPrefix = "Repairability";
         private static bool applied;
+        private static Dictionary<string, int> defaultBrakeLatheRepairGroups;
+
+        public static bool CustomRepairabilityActive { get; private set; }
+        public static bool BrakeDrumLatheAvailable { get; private set; } = true;
 
         public static bool ApplyConfiguredRepairGroups() {
             if (applied)
@@ -39,16 +43,6 @@ namespace Cms21GameplayPlus
 
             if (Main.SettingsEntry == null)
                 return false;
-            if (!Main.SettingsEntry.Value.modifyRepairGroups) {
-                applied = true;
-                return true;
-            }
-
-            if (!File.Exists(GlobalConfig.cfgRepairability)) {
-                ModLogger.Log("[Repairability] Config file not found: " + GlobalConfig.cfgRepairability, Types.LoggingLevels.Warning);
-                applied = true;
-                return true;
-            }
 
             GameInventory inventory = Singleton<GameInventory>.Instance;
             if (inventory == null || inventory.partPropertyList == null) {
@@ -56,14 +50,34 @@ namespace Cms21GameplayPlus
                 return false;
             }
 
+            EnsureDefaultBrakeLatheRepairGroups(inventory);
+
+            if (!Main.SettingsEntry.Value.modifyRepairGroups) {
+                CustomRepairabilityActive = false;
+                SynchronizeBrakeLatheAvailability(inventory);
+                applied = true;
+                return true;
+            }
+
+            if (!File.Exists(GlobalConfig.cfgRepairability)) {
+                ModLogger.Log("[Repairability] Config file not found: " + GlobalConfig.cfgRepairability, Types.LoggingLevels.Warning);
+                CustomRepairabilityActive = false;
+                SynchronizeBrakeLatheAvailability(inventory);
+                applied = true;
+                return true;
+            }
+
             try {
                 RepairabilityFileConfig config = TomletMain.To<RepairabilityFileConfig>(TomlParser.ParseFile(GlobalConfig.cfgRepairability));
                 if (config == null || config.enabled == false) {
                     ModLogger.Log("[Repairability] Custom repairability is disabled.");
+                    CustomRepairabilityActive = false;
+                    SynchronizeBrakeLatheAvailability(inventory);
                     applied = true;
                     return true;
                 }
 
+                CustomRepairabilityActive = true;
                 RepairabilityFileGroup[] groups = config.Group ?? new RepairabilityFileGroup[0];
                 HashSet<string> nonRepairablePartIDs = new HashSet<string>(StringComparer.Ordinal);
                 Dictionary<string, int> forcedRepairGroups = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -218,6 +232,8 @@ namespace Cms21GameplayPlus
                     ModLogger.Log("[Repairability] " + group.name + ": mode=" + group.repairGroup + ", assigned=" + groupAssigned + ", unchanged=" + groupUnchanged + ", skippedByPriority=" + groupSkippedByPriority + ", missing=" + groupMissing);
                 }
 
+                SynchronizeBrakeLatheAvailability(inventory);
+
                 ModLogger.Log("[Repairability] Applied once. Priority: nonRepairable=" + nonRepairablePartIDs.Count + ", forced=" + forcedRepairGroups.Count + ", forcedDisabled=" + forcedDisabled + ", forcedAssigned=" + forcedAssigned + ", forcedUnchanged=" + forcedUnchanged + ", priorityDuplicates=" + priorityDuplicates + ", priorityConflicts=" + priorityConflicts + ", invalidPriorityGroups=" + invalidPriorityGroups + ". Specialized: groups=" + specializedGroups.Count + ", active=" + activeSpecializedGroups + ", assigned=" + assigned + ", unchanged=" + unchanged + ", skippedByPriority=" + skippedByPriority + ", duplicates=" + duplicate + ", invalidGroups=" + invalidGroups + ", missing=" + missing + ".");
                 if (missingExamples.Count > 0)
                     ModLogger.Log("[Repairability] First missing IDs: " + string.Join(", ", missingExamples.ToArray()), Types.LoggingLevels.Warning);
@@ -225,9 +241,200 @@ namespace Cms21GameplayPlus
                 applied = true;
                 return true;
             } catch (Exception exception) {
+                CustomRepairabilityActive = false;
+                SynchronizeBrakeLatheAvailability(inventory);
                 ModLogger.Log("[Repairability] Failed to load or apply " + GlobalConfig.cfgRepairability + Environment.NewLine + exception, Types.LoggingLevels.Error);
                 return false;
             }
+        }
+
+        private static void SynchronizeBrakeLatheAvailability(
+            GameInventory inventory)
+        {
+            BrakeLatheRepairabilityStatus drumStatus;
+            BrakeLatheRepairabilityStatus gearsStatus;
+            BrakeLatheRepairabilityStatus clutchDiscsStatus;
+            BrakeLatheRepairabilityStatus pulleysStatus;
+            bool settingsChanged = BrakeLatheExtensionsFeature
+                .SynchronizeRepairabilitySettings(inventory,
+                    out drumStatus, out gearsStatus,
+                    out clutchDiscsStatus, out pulleysStatus);
+
+            BrakeLatheRepairabilityStatus defaultDrumStatus;
+            BrakeLatheRepairabilityStatus defaultGearsStatus;
+            BrakeLatheRepairabilityStatus defaultClutchDiscsStatus;
+            BrakeLatheRepairabilityStatus defaultPulleysStatus;
+            BrakeLatheExtensionsFeature.GetRepairabilityStatuses(inventory,
+                defaultBrakeLatheRepairGroups, true,
+                out defaultDrumStatus, out defaultGearsStatus,
+                out defaultClutchDiscsStatus, out defaultPulleysStatus);
+
+            BrakeLatheRepairabilityStatus modifiedDrumStatus = drumStatus;
+            BrakeLatheRepairabilityStatus modifiedGearsStatus = gearsStatus;
+            BrakeLatheRepairabilityStatus modifiedClutchDiscsStatus =
+                clutchDiscsStatus;
+            BrakeLatheRepairabilityStatus modifiedPulleysStatus =
+                pulleysStatus;
+            if (Main.SettingsEntry != null &&
+                !Main.SettingsEntry.Value.modifyRepairGroups) {
+                Dictionary<string, int> configuredRepairGroups =
+                    GetConfiguredBrakeLatheRepairGroups();
+                BrakeLatheExtensionsFeature.GetRepairabilityStatuses(
+                    inventory, configuredRepairGroups, false,
+                    out modifiedDrumStatus, out modifiedGearsStatus,
+                    out modifiedClutchDiscsStatus,
+                    out modifiedPulleysStatus);
+            }
+
+            PublishBrakeLatheAvailability(drumStatus, gearsStatus,
+                clutchDiscsStatus, pulleysStatus, modifiedDrumStatus,
+                modifiedGearsStatus, modifiedClutchDiscsStatus,
+                modifiedPulleysStatus, defaultDrumStatus,
+                defaultGearsStatus, defaultClutchDiscsStatus,
+                defaultPulleysStatus);
+            if (settingsChanged)
+                Main.SaveSettings();
+        }
+
+        private static void EnsureDefaultBrakeLatheRepairGroups(
+            GameInventory inventory)
+        {
+            if (defaultBrakeLatheRepairGroups != null)
+                return;
+
+            defaultBrakeLatheRepairGroups =
+                new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (string partId in BrakeLatheExtensionsFeature
+                .GetSupportedRepairabilityPartIds()) {
+                if (!inventory.ExistsInPartProperty(partId))
+                    continue;
+                PartProperty property = inventory.GetItemProperty(partId);
+                if (property != null)
+                    defaultBrakeLatheRepairGroups[partId] =
+                        property.RepairGroup;
+            }
+        }
+
+        private static Dictionary<string, int>
+            GetConfiguredBrakeLatheRepairGroups()
+        {
+            Dictionary<string, int> result = defaultBrakeLatheRepairGroups !=
+                null
+                    ? new Dictionary<string, int>(
+                        defaultBrakeLatheRepairGroups, StringComparer.Ordinal)
+                    : new Dictionary<string, int>(StringComparer.Ordinal);
+            if (!File.Exists(GlobalConfig.cfgRepairability))
+                return result;
+
+            try {
+                RepairabilityFileConfig config =
+                    TomletMain.To<RepairabilityFileConfig>(
+                        TomlParser.ParseFile(GlobalConfig.cfgRepairability));
+                if (config == null || !config.enabled)
+                    return result;
+
+                HashSet<string> nonRepairable =
+                    new HashSet<string>(StringComparer.Ordinal);
+                Dictionary<string, int> forced =
+                    new Dictionary<string, int>(StringComparer.Ordinal);
+                List<RepairabilityFileGroup> specialized =
+                    new List<RepairabilityFileGroup>();
+                RepairabilityFileGroup[] groups = config.Group ??
+                    new RepairabilityFileGroup[0];
+
+                foreach (RepairabilityFileGroup group in groups) {
+                    int forcedRepairGroup;
+                    if (!TryGetForcedRepairGroup(group?.name,
+                        out forcedRepairGroup)) {
+                        specialized.Add(group);
+                        continue;
+                    }
+                    if (group == null)
+                        continue;
+                    foreach (string configuredId in group.partIDs ??
+                        new string[0]) {
+                        string partId = configuredId?.Trim();
+                        if (string.IsNullOrEmpty(partId) ||
+                            !result.ContainsKey(partId))
+                            continue;
+                        if (forcedRepairGroup == 0) {
+                            nonRepairable.Add(partId);
+                            forced.Remove(partId);
+                            continue;
+                        }
+                        if (nonRepairable.Contains(partId) ||
+                            forced.ContainsKey(partId))
+                            continue;
+                        forced.Add(partId, forcedRepairGroup);
+                    }
+                }
+
+                HashSet<string> specializedPartIds =
+                    new HashSet<string>(StringComparer.Ordinal);
+                foreach (RepairabilityFileGroup group in specialized) {
+                    if (group == null || group.repairGroup < -1 ||
+                        group.repairGroup > MaximumSupportedRepairGroup ||
+                        group.repairGroup == -1)
+                        continue;
+                    foreach (string configuredId in group.partIDs ??
+                        new string[0]) {
+                        string partId = configuredId?.Trim();
+                        if (string.IsNullOrEmpty(partId) ||
+                            !result.ContainsKey(partId) ||
+                            nonRepairable.Contains(partId) ||
+                            forced.ContainsKey(partId) ||
+                            !specializedPartIds.Add(partId))
+                            continue;
+                        result[partId] = group.repairGroup;
+                    }
+                }
+
+                foreach (string partId in nonRepairable)
+                    result[partId] = 0;
+                foreach (KeyValuePair<string, int> item in forced)
+                    result[item.Key] = item.Value;
+            } catch (Exception exception) {
+                ModLogger.Log("[Repairability] Failed to evaluate configured " +
+                    "brake-lathe dependencies." + Environment.NewLine +
+                    exception, Types.LoggingLevels.Warning);
+            }
+            return result;
+        }
+
+        public static bool HasRepairGroup(GameInventory inventory,
+            string partID)
+        {
+            if (inventory == null || string.IsNullOrEmpty(partID) ||
+                !inventory.ExistsInPartProperty(partID))
+                return false;
+            PartProperty property = inventory.GetItemProperty(partID);
+            return property != null && property.RepairGroup != 0;
+        }
+
+        private static void PublishBrakeLatheAvailability(
+            BrakeLatheRepairabilityStatus drum,
+            BrakeLatheRepairabilityStatus gears,
+            BrakeLatheRepairabilityStatus clutchDiscs,
+            BrakeLatheRepairabilityStatus pulleys,
+            BrakeLatheRepairabilityStatus modifiedDrum,
+            BrakeLatheRepairabilityStatus modifiedGears,
+            BrakeLatheRepairabilityStatus modifiedClutchDiscs,
+            BrakeLatheRepairabilityStatus modifiedPulleys,
+            BrakeLatheRepairabilityStatus defaultDrum,
+            BrakeLatheRepairabilityStatus defaultGears,
+            BrakeLatheRepairabilityStatus defaultClutchDiscs,
+            BrakeLatheRepairabilityStatus defaultPulleys)
+        {
+            BrakeDrumLatheAvailable =
+                BrakeLatheExtensionsFeature.IsAvailable(drum);
+            UiIntegrationBridge.SyncBrakeLatheRepairabilityDependencies(
+                modifiedDrum, modifiedGears, modifiedClutchDiscs,
+                modifiedPulleys, defaultDrum, defaultGears,
+                defaultClutchDiscs, defaultPulleys);
+            if (Main.SettingsEntry != null)
+                UiIntegrationBridge.SyncBrakeDrumRepairability(
+                    Main.SettingsEntry.Value.allowBrakeLatheFixDrumBrake &&
+                    BrakeLatheExtensionsFeature.IsAvailable(drum));
         }
 
         public static bool IsRepairable(Item item) {

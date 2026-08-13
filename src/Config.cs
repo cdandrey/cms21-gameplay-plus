@@ -8,6 +8,15 @@ using CMS;
 
 namespace Cms21GameplayPlus
 {
+    public enum BrakeLatheProcessingDuration
+    {
+        Off = 0,
+        Fast = 1,
+        Medium = 2,
+        Slow = 3,
+        Default = 5,
+    }
+
     public sealed class Settings
     {
         [Tomlet.Attributes.TomlInlineComment("Skip the part-repair minigame")]
@@ -30,10 +39,13 @@ namespace Cms21GameplayPlus
         public bool allowBrakeLatheFixDrumBrake = true;
         [Tomlet.Attributes.TomlInlineComment("Allow repairing gears on the brake lathe")]
         public bool allowBrakeLatheFixGears = true;
-        [Tomlet.Attributes.TomlInlineComment("Allow repairing flywheels on the brake lathe")]
+        [Tomlet.Attributes.TomlInlineComment("Allow repairing flywheels and clutch pressure plates on the brake lathe")]
         public bool allowBrakeLatheFixFlywheel = true;
         [Tomlet.Attributes.TomlInlineComment("Allow repairing pulleys on the brake lathe")]
         public bool allowBrakeLatheFixPulleys = true;
+        [Tomlet.Attributes.TomlInlineComment("Brake-lathe processing duration")]
+        public BrakeLatheProcessingDuration brakeLatheProcessingDuration =
+            BrakeLatheProcessingDuration.Medium;
         [Tomlet.Attributes.TomlInlineComment("Force the junkyard generator to use its maximum car percentage")]
         public bool junkyardVehicleMaximumCars = false;
         [Tomlet.Attributes.TomlInlineComment("Expand normal and salvage auction pools")]
