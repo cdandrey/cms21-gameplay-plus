@@ -28,6 +28,12 @@ namespace Cms21GameplayPlus
         public bool modifyRepairGroups = true;
         [Tomlet.Attributes.TomlInlineComment("Allow repairing drum brakes on the brake lathe")]
         public bool allowBrakeLatheFixDrumBrake = true;
+        [Tomlet.Attributes.TomlInlineComment("Allow repairing gears on the brake lathe")]
+        public bool allowBrakeLatheFixGears = true;
+        [Tomlet.Attributes.TomlInlineComment("Allow repairing flywheels on the brake lathe")]
+        public bool allowBrakeLatheFixFlywheel = true;
+        [Tomlet.Attributes.TomlInlineComment("Allow repairing pulleys on the brake lathe")]
+        public bool allowBrakeLatheFixPulleys = true;
         [Tomlet.Attributes.TomlInlineComment("Force the junkyard generator to use its maximum car percentage")]
         public bool junkyardVehicleMaximumCars = false;
         [Tomlet.Attributes.TomlInlineComment("Expand normal and salvage auction pools")]

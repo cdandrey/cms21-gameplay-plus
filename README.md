@@ -128,6 +128,11 @@ service role and consistency with equivalent parts.
 | **Bypass ECU tuning minigame** | `bypassEcuTuningMinigame` | `false` | Completes ECU tuning after the first tuning adjustment. |
 | **Modify repair groups** | `modifyRepairGroups` | `true` | Applies `Repairability.cfg` to the game part data. Disabling it leaves the game repair groups unchanged and skips the custom repairability rules. |
 | **Repair brake drums** | `allowBrakeLatheFixDrumBrake` | `true` | Adds supported brake drums to the brake-lathe selection and allows them to be repaired there. When CMS21 UI+ is installed, the optional integration also exposes the same effective repairable status to its filters and wrench badges. Disabling this switch removes the additional brake-lathe eligibility. |
+| **Repair gears** | `allowBrakeLatheFixGears` | `true` | Adds supported cam gears, timing sprockets, timing gears and drivetrain gears to the brake-lathe selection and allows them to be repaired there. Chain guides, tensioners and chains are not included. |
+| **Repair flywheels** | `allowBrakeLatheFixFlywheel` | `true` | Adds supported flywheels to the brake-lathe selection and allows them to be repaired there. |
+| **Repair pulleys** | `allowBrakeLatheFixPulleys` | `true` | Adds supported water-pump, fan and crankshaft pulleys to the brake-lathe selection and allows them to be repaired there. |
+
+Brake-lathe repair cycles are shortened from the native 20 seconds to 8 seconds; the loop sound starts fading during the final second. Extra gear, pulley and flywheel models are aligned to the spindle axis and scaled for brake-lathe display, with cutter travel and the processing ring matched to their diameter. The processing ring is hidden when the repair cycle finishes.
 
 ### Interface and state
 
