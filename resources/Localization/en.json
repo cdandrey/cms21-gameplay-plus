@@ -1,0 +1,18 @@
+{
+  "LOC_SharpEyeExamine": "Examine",
+  "LOC_SharpEyeResetSystem": "Reset system",
+  "LOC_SharpEyeResetVehicle": "Reset all systems",
+  "LOC_SharpEyeBody": "Body",
+  "LOC_SharpEyeAddedToShoppingList": "Added to shopping list",
+  "LOC_SharpEyeShowSystems": "Show available systems",
+  "LOC_SharpEyeSystemsProgress": "Available for full inspection: {1}, inspected: {0}",
+  "LOC_SharpEyeSystemInspected": "Inspected",
+  "LOC_SharpEyeSystemNotInspected": "Not inspected",
+  "LOC_SharpEyeSystemUnavailable": "Unavailable",
+  "LOC_SharpEyeSuspensionFrontLeft": "Front Left Suspension",
+  "LOC_SharpEyeSuspensionFrontRight": "Front Right Suspension",
+  "LOC_SharpEyeSuspensionRearLeft": "Rear Left Suspension",
+  "LOC_SharpEyeSuspensionRearRight": "Rear Right Suspension",
+  "LOC_SharpEyeSuspensionFrontCenter": "Front Suspension",
+  "LOC_SharpEyeSuspensionRearCenter": "Rear Suspension"
+}

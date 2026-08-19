@@ -115,6 +115,32 @@ The practical default for an uncertain specialized group is therefore `repairGro
 the game's original behavior until the parts can be classified confidently by construction,
 service role and consistency with equivalent parts.
 
+### Sharp Eye examination
+
+Using Examine Mode keeps the game's normal per-system examination flow. Sharp Eye tracks only the
+currently targeted system and shows progress against that system's full configured part
+specification. Physically present parts are examined only by the game's normal examination logic;
+missing parts are never passed to `Examine`, but are treated as already identified so the progress
+counter can still reach the full specification total.
+
+Hold `Tab` in Examine Mode to show every inspection system available at the current Sharp Eye
+skill level; systems that require a higher level are hidden while `Tab` is held, and the `Tab`
+control hint remains visible even at level 0. At level 0 all mechanical systems are hidden without
+adding the body overview outline. Systems with installed parts are outlined in white until complete
+and green after completion. Completely disassembled systems are rendered in white until inspected
+and light blue after completion. The body follows the same white/green overview state from level 1,
+while normal hover uses yellow for incomplete targets and green for completed targets. Exhaust and
+downpipe systems become available at level 3. The UI shows how many targets are currently available
+for full inspection and how many are complete. While `Tab` is held, an upper-right system list shows
+every inspectable system in a separate row with an ordinal number and inspected, not inspected or
+unavailable state. Releasing `Tab` hides the list and returns to normal per-system inspection.
+
+The shopping list is prepared for the selected system. Missing configured parts participate in the
+same replacement calculation as installed parts, while compatible 100% parts already available in
+the player inventory or unlocked warehouses are deducted before anything is added. Rims and tires
+keep their exact wheel dimensions, and entries already present in the current shopping list are not
+duplicated.
+
 ### Jobs and controls
 
 | In-game setting | Config flag | Default | Detailed behavior |

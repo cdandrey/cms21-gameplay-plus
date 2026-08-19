@@ -34,6 +34,7 @@
     <Compile Include="src\Config.cs" />
     <Compile Include="src\Features\BrakeLathe\BrakeLatheExtensionsFeature.cs" />
     <Compile Include="src\Features\Garage\GarageDoorStateFeature.cs" />
+    <Compile Include="src\Features\Garage\SharpEyeShoppingListFeature.cs" />
     <Compile Include="src\Features\Inventory\WarehouseMountSourceFeature.cs" />
     <Compile Include="src\Features\Locations\AuctionCarPoolFeature.cs" />
     <Compile Include="src\Features\Locations\JunkyardVehicleCountFeature.cs" />
@@ -48,10 +49,19 @@
     <Compile Include="src\Features\Minigames\WheelBalanceMinigameBypass.cs" />
     <Compile Include="src\Features\Repairability\RepairabilityManager.cs" />
     <Compile Include="src\Infrastructure\ModLogger.cs" />
+    <Compile Include="src\Infrastructure\ModLocalization.cs" />
     <Compile Include="src\Features\Garage\EngineHoistPlacementFeature.cs" />
     <Compile Include="src\Infrastructure\UiIntegrationBridge.cs" />
     <Compile Include="src\Infrastructure\AssemblyInfo.cs" />
     <Compile Include="src\Main.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="resources\Localization\en.json">
+      <LogicalName>Cms21GameplayPlus.Localization.en.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\Localization\ru.json">
+      <LogicalName>Cms21GameplayPlus.Localization.ru.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="0Harmony">

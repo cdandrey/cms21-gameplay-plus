@@ -81,6 +81,7 @@ namespace Cms21GameplayPlus
             if (sceneName == "garage")
                 SaveProfileMemory();
             WarehouseMountSourceFeature.Reset();
+            SharpEyeShoppingListFeature.OnGarageSceneUnloaded();
         }
 
         public override void OnSceneWasInitialized(int buildIndex, string sceneName)
@@ -92,6 +93,8 @@ namespace Cms21GameplayPlus
                 GlobalState.LoadedProfileId = NormalizeProfileId(
                     PlayerPrefs.GetInt("selectedProfile", 0));
                 GlobalState.IsGarageSceneActive = true;
+                SharpEyeShoppingListFeature.OnGarageSceneInitialized(
+                    GlobalState.LoadedProfileId);
                 GarageDoorStateFeature.OnGarageSceneInitialized();
                 WarehouseMountSourceFeature.BeginRefreshAfterGarageLoad();
                 UiIntegrationBridge.SyncBrakeDrumRepairability(

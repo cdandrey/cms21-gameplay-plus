@@ -1,0 +1,18 @@
+{
+  "LOC_SharpEyeExamine": "Осмотреть",
+  "LOC_SharpEyeResetSystem": "Сброс системы",
+  "LOC_SharpEyeResetVehicle": "Сброс всех систем",
+  "LOC_SharpEyeBody": "Кузов",
+  "LOC_SharpEyeAddedToShoppingList": "Добавлено в список",
+  "LOC_SharpEyeShowSystems": "Показать доступные системы",
+  "LOC_SharpEyeSystemsProgress": "Доступно для полного осмотра: {1}, осмотрено: {0}",
+  "LOC_SharpEyeSystemInspected": "Осмотрено",
+  "LOC_SharpEyeSystemNotInspected": "Не осмотрено",
+  "LOC_SharpEyeSystemUnavailable": "Недоступно",
+  "LOC_SharpEyeSuspensionFrontLeft": "Подвеска левого переднего колеса",
+  "LOC_SharpEyeSuspensionFrontRight": "Подвеска правого переднего колеса",
+  "LOC_SharpEyeSuspensionRearLeft": "Подвеска левого заднего колеса",
+  "LOC_SharpEyeSuspensionRearRight": "Подвеска правого заднего колеса",
+  "LOC_SharpEyeSuspensionFrontCenter": "Передняя подвеска",
+  "LOC_SharpEyeSuspensionRearCenter": "Задняя подвеска"
+}

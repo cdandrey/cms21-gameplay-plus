@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Reflection;
+using UnityEngine;
 
 #if NET6_0_OR_GREATER
 using Il2CppCMS.Containers;
@@ -11,6 +13,15 @@ namespace Cms21GameplayPlus
 {
     internal static class UiIntegrationBridge
     {
+        internal sealed class NativeHintHandle
+        {
+            public object Row;
+            public object Hint;
+            public RectTransform Rect;
+            public Bounds LocalVisualBounds;
+            public bool HasLocalVisualBounds;
+        }
+
         private const string UiAssemblyName = "CMS21UIPlus";
         private static MethodInfo notifyItemRemoved;
         private static MethodInfo notifyGroupRemoved;
@@ -34,9 +45,15 @@ namespace Cms21GameplayPlus
         private static MethodInfo setBrakeDrumRepairable;
         private static MethodInfo setSettingDependencyStatus;
         private static MethodInfo setSettingDependencyAvailable;
+        private static MethodInfo createNativeFooterHint;
+        private static MethodInfo updateFooterHint;
+        private static MethodInfo setFooterHintActive;
+        private static MethodInfo tryGetControlHintVisualBounds;
+        private static MethodInfo destroyControlHintRow;
         private static bool cacheMethodsResolved;
         private static bool repairabilityMethodResolved;
         private static bool dependencyMethodResolved;
+        private static bool nativeHintMethodsResolved;
 
         public static void NotifyItemRemoved(Item item)
         {
@@ -58,6 +75,154 @@ namespace Cms21GameplayPlus
         {
             EnsureRepairabilityMethod();
             InvokeSafely(setBrakeDrumRepairable, repairable);
+        }
+
+        public static NativeHintHandle CreateNativeFooterHint(
+            object source, string name, string[] keys, string text,
+            bool canHold, float timeToHold)
+        {
+            if (source == null)
+                return null;
+            EnsureNativeHintMethods();
+            if (createNativeFooterHint == null)
+                return null;
+
+            try {
+                ParameterInfo[] parameters =
+                    createNativeFooterHint.GetParameters();
+                if (parameters == null || parameters.Length != 10 ||
+                    !parameters[0].ParameterType.IsInstanceOfType(source))
+                    return null;
+                object inputHandlingMethod;
+                try {
+                    inputHandlingMethod = Enum.Parse(
+                        parameters[6].ParameterType, "ButtonDown");
+                } catch {
+                    inputHandlingMethod = Activator.CreateInstance(
+                        parameters[6].ParameterType);
+                }
+                object row = createNativeFooterHint.Invoke(null,
+                    new object[] { source, name, keys, text, null, null,
+                        inputHandlingMethod, canHold, timeToHold, true });
+                if (row == null)
+                    return null;
+
+                object hintsValue = ReadMember(row, "Hints");
+                IList hints = hintsValue as IList;
+                if (hints == null || hints.Count == 0) {
+                    InvokeSafely(destroyControlHintRow, row);
+                    return null;
+                }
+                NativeHintHandle handle = new NativeHintHandle {
+                    Row = row,
+                    Hint = hints[0],
+                    Rect = ReadMember(hints[0], "Rect") as RectTransform,
+                };
+                RefreshNativeFooterHintVisualBounds(handle);
+                return handle;
+            } catch (Exception exception) {
+                ModLogger.Log("[UIIntegration] Native hint creation failed." +
+                    Environment.NewLine + exception,
+                    Types.LoggingLevels.Warning);
+                return null;
+            }
+        }
+
+        public static bool ReparentNativeFooterHint(
+            NativeHintHandle handle, Transform parent)
+        {
+            if (handle == null || handle.Rect == null || parent == null)
+                return false;
+            try {
+                handle.Rect.SetParent(parent, true);
+                handle.Rect.SetAsLastSibling();
+                WriteMember(handle.Row, "Parent", parent);
+                return handle.Rect.parent == parent;
+            } catch (Exception exception) {
+                ModLogger.Log("[UIIntegration] Native hint reparent failed." +
+                    Environment.NewLine + exception,
+                    Types.LoggingLevels.Warning);
+                return false;
+            }
+        }
+
+        public static void UpdateNativeFooterHint(NativeHintHandle handle,
+            string text, bool active)
+        {
+            if (handle == null || handle.Hint == null)
+                return;
+            EnsureNativeHintMethods();
+            InvokeSafely(updateFooterHint, handle.Hint, text, active);
+            InvokeSafely(setFooterHintActive, handle.Hint, active);
+            object description = ReadMember(handle.Hint, "Description");
+            WriteMember(description, "canRunUpdate", false);
+            WriteMember(description, "blockInput", true);
+            WriteMember(description, "blockMouseInput", true);
+            WriteMember(description, "blockKeyboardInput", true);
+            RefreshNativeFooterHintVisualBounds(handle);
+        }
+
+        public static void RefreshNativeFooterHintVisualBounds(
+            NativeHintHandle handle)
+        {
+            if (handle == null || handle.Hint == null ||
+                handle.Rect == null)
+                return;
+            EnsureNativeHintMethods();
+            if (tryGetControlHintVisualBounds == null) {
+                handle.HasLocalVisualBounds = false;
+                return;
+            }
+
+            try {
+                object[] arguments = new object[] {
+                    handle.Hint, handle.Rect, new Bounds()
+                };
+                object result = tryGetControlHintVisualBounds.Invoke(
+                    null, arguments);
+                if (!(result is bool) || !(bool)result ||
+                    !(arguments[2] is Bounds)) {
+                    handle.HasLocalVisualBounds = false;
+                    return;
+                }
+                handle.LocalVisualBounds = (Bounds)arguments[2];
+                handle.HasLocalVisualBounds = true;
+            } catch {
+                handle.HasLocalVisualBounds = false;
+            }
+        }
+
+        public static void SetNativeFooterHintHoldProgress(
+            NativeHintHandle handle, float progress)
+        {
+            if (handle == null || handle.Hint == null)
+                return;
+            object description = ReadMember(handle.Hint, "Description");
+            if (description == null)
+                return;
+
+            float fill = Mathf.Clamp01(progress);
+            UnityEngine.UI.Image buttonFill =
+                ReadMember(description, "buttonFill") as UnityEngine.UI.Image;
+            if (buttonFill != null)
+                buttonFill.fillAmount = fill;
+            WriteMember(description, "holdTime", 0f);
+            WriteMember(description, "eventInvoked", false);
+            WriteMember(description, "eventInvoking", false);
+            WriteMember(description, "mouseDown", false);
+        }
+
+        public static void DestroyNativeFooterHint(NativeHintHandle handle)
+        {
+            if (handle == null)
+                return;
+            EnsureNativeHintMethods();
+            if (handle.Row != null)
+                InvokeSafely(destroyControlHintRow, handle.Row);
+            handle.Row = null;
+            handle.Hint = null;
+            handle.Rect = null;
+            handle.HasLocalVisualBounds = false;
         }
 
         public static void SyncBrakeLatheRepairabilityDependencies(
@@ -115,6 +280,45 @@ namespace Cms21GameplayPlus
             repairabilityMethodResolved = true;
         }
 
+        private static void EnsureNativeHintMethods()
+        {
+            if (nativeHintMethodsResolved)
+                return;
+            nativeHintMethodsResolved = true;
+
+            Type factoryType = Type.GetType(
+                "Cms21UiPlus.NativeUiFactory, " + UiAssemblyName, false);
+            if (factoryType == null)
+                return;
+
+            MethodInfo[] methods = factoryType.GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Static);
+            for (int index = 0; index < methods.Length; index++) {
+                MethodInfo method = methods[index];
+                if (method == null)
+                    continue;
+                int parameterCount = method.GetParameters().Length;
+                if (string.Equals(method.Name, "CreateNativeFooterHint",
+                        StringComparison.Ordinal) && parameterCount == 10)
+                    createNativeFooterHint = method;
+                else if (string.Equals(method.Name, "UpdateFooterHint",
+                        StringComparison.Ordinal) && parameterCount == 3)
+                    updateFooterHint = method;
+                else if (string.Equals(method.Name, "SetFooterHintActive",
+                        StringComparison.Ordinal) && parameterCount == 2)
+                    setFooterHintActive = method;
+                else if (string.Equals(method.Name,
+                        "TryGetControlHintVisualBounds",
+                        StringComparison.Ordinal) && parameterCount == 3)
+                    tryGetControlHintVisualBounds = method;
+                else if (string.Equals(method.Name,
+                        "DestroyControlHintRow", StringComparison.Ordinal) &&
+                    parameterCount == 1)
+                    destroyControlHintRow = method;
+            }
+        }
+
         private static void EnsureDependencyMethod()
         {
             if (dependencyMethodResolved)
@@ -145,6 +349,49 @@ namespace Cms21GameplayPlus
             InvokeSafely(setSettingDependencyAvailable,
                 BuildInfo.TechnicalName, dependencyId,
                 BrakeLatheExtensionsFeature.IsAvailable(status));
+        }
+
+        private static object ReadMember(object target, string name)
+        {
+            if (target == null || string.IsNullOrEmpty(name))
+                return null;
+            Type type = target.GetType();
+            try {
+                PropertyInfo property = type.GetProperty(name,
+                    BindingFlags.Instance | BindingFlags.Public |
+                    BindingFlags.NonPublic);
+                if (property != null)
+                    return property.GetValue(target, null);
+                FieldInfo field = type.GetField(name,
+                    BindingFlags.Instance | BindingFlags.Public |
+                    BindingFlags.NonPublic);
+                return field != null ? field.GetValue(target) : null;
+            } catch {
+                return null;
+            }
+        }
+
+        private static void WriteMember(object target, string name,
+            object value)
+        {
+            if (target == null || string.IsNullOrEmpty(name))
+                return;
+            Type type = target.GetType();
+            try {
+                PropertyInfo property = type.GetProperty(name,
+                    BindingFlags.Instance | BindingFlags.Public |
+                    BindingFlags.NonPublic);
+                if (property != null && property.CanWrite) {
+                    property.SetValue(target, value, null);
+                    return;
+                }
+                FieldInfo field = type.GetField(name,
+                    BindingFlags.Instance | BindingFlags.Public |
+                    BindingFlags.NonPublic);
+                if (field != null)
+                    field.SetValue(target, value);
+            } catch {
+            }
         }
 
         private static void InvokeSafely(MethodInfo method,
