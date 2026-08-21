@@ -24,7 +24,7 @@ using CMS.UI.Logic;
 
 namespace Cms21GameplayPlus
 {
-    internal static class SharpEyeShoppingListFeature
+    internal static partial class SharpEyeShoppingListFeature
     {
         private const float PerfectConditionThreshold = 0.9999f;
         private const int DiagnosticLineLimit = 4000;
@@ -33,12 +33,6 @@ namespace Cms21GameplayPlus
         private const int MaximumInspectionSkillLevel = 6;
         private const string DiagnosticLogPath =
             @"Mods\CMS21GameplayPlus\SharpEyeUiDiagnostics.log";
-
-        private enum InspectionPath
-        {
-            Native,
-            SharpEye
-        }
 
         private enum PurchaseKind
         {
@@ -103,17 +97,7 @@ namespace Cms21GameplayPlus
                 new HashSet<int>();
             public readonly HashSet<int> ExaminedMissingSlots =
                 new HashSet<int>();
-            public readonly List<PartScript> NativeCarrierCandidates =
-                new List<PartScript>();
-            public PartScript CarrierPart;
-            public bool CustomContinuationActive;
-            public bool PassStarted;
-            public bool CarrierVisualStateLogged;
-            public bool CarrierVisualMouseDownLogged;
             public float ManualHoldProgress;
-            public float CarrierVisualProgress;
-            public float NativeVisualProgress;
-            public bool HasMountedParts;
             public int Total;
         }
 
@@ -154,12 +138,10 @@ namespace Cms21GameplayPlus
             new Dictionary<PurchaseKey, int>();
         private static readonly Dictionary<string, bool> PurchasablePartCache =
             new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        private static readonly Dictionary<int, int> SystemSpecificationCountCache =
-            new Dictionary<int, int>();
         private static readonly Dictionary<int, List<string>> SystemSpecificationPartIdsCache =
             new Dictionary<int, List<string>>();
-        private static readonly Dictionary<int, PartScript> SystemSinglePartFallback =
-            new Dictionary<int, PartScript>();
+        private static readonly Dictionary<int, int> SystemRequiredInspectionLevelCache =
+            new Dictionary<int, int>();
         private static readonly Dictionary<int, List<PartScript>> SystemWheelPartsCache =
             new Dictionary<int, List<PartScript>>();
         private static readonly Dictionary<int, HashSet<int>> LoaderPartInstanceIds =
@@ -176,12 +158,8 @@ namespace Cms21GameplayPlus
             new Dictionary<int, BodyPassState>();
         private static readonly Dictionary<int, List<InteractiveObject>> InspectionSystemsCache =
             new Dictionary<int, List<InteractiveObject>>();
-        private static readonly Dictionary<int, string> CarDisplayNameCache =
-            new Dictionary<int, string>();
         private static readonly Dictionary<int, string> SystemNameCache =
             new Dictionary<int, string>();
-        private static readonly HashSet<int> DumpedInspectionLoaderIds =
-            new HashSet<int>();
         private static readonly Queue<PurchaseKey> PendingShoppingListAdds =
             new Queue<PurchaseKey>();
         private static readonly Dictionary<PurchaseKey, int> PendingShoppingListCounts =
@@ -198,23 +176,16 @@ namespace Cms21GameplayPlus
         private static bool suppressShopListObserver;
         private static bool processingCustomPartExamine;
         private static int customExaminedPartInstanceId = -1;
-        private static bool customExamineCall;
         private static bool examineModeSessionActive;
-        private static bool repeatClickArmed;
-        private static bool examineMouseWasDown;
         private static InteractiveObject capturedExamineSystem;
-        private static InteractiveObject capturedExamineBody;
         private static InteractiveObject bodyHighlightTarget;
         private static readonly List<InteractiveObject> activeBodyHighlightTargets =
             new List<InteractiveObject>();
         private static int bodyHighlightLoaderId = -1;
-        private static InteractiveObject observedMouseOverTarget;
-        private static int observedMouseOverFrame = -1;
-        private static InteractiveObject observedBodyMouseOverTarget;
-        private static int observedBodyMouseOverFrame = -1;
-        private static bool suppressMouseOverObservation;
+        private static bool bodyHighlightCompleted;
+        private static bool bodyHighlightBaseActive;
         private static InteractiveObject emptySystemHighlightTarget;
-        private static int inspectionResetTargetId = -1;
+        private static bool emptySystemHighlightCompleted;
         private static float inspectionSystemResetHoldProgress;
         private static float inspectionVehicleResetHoldProgress;
         private static bool inspectionSystemResetTriggered;
@@ -232,22 +203,46 @@ namespace Cms21GameplayPlus
         private static bool inspectionFooterHoldWasActiveSelf;
         private const int InspectionPreviewPartLayer = 16;
         private const int InspectionMountedPartLayer = 28;
+        private const float InspectionMissingPartXrayAlpha = 1.25f;
+        private const float InspectionPointerRayDistance = 250f;
         private const string InspectionSolidColorProperty = "_SolidColor";
+        private const string InspectionXrayColorProperty = "_EmissionColor";
         private const float InspectionSystemListWidth = 220f;
+        private const float InspectionSystemListHeaderHeight = 18f;
         private const float InspectionSystemListRowHeight = 18f;
         private const float InspectionSystemListRowGap = 1f;
-        private const float InspectionSystemListNumberWidth = 22f;
-        private const float InspectionSystemListStatusWidth = 78f;
+        private const float InspectionSystemListNumberWidth = 20f;
+        private const float InspectionSystemListMaximumWidth = 42f;
+        private const float InspectionSystemListProgressWidth = 46f;
         private static readonly Color inspectionCompletedMissingSystemColor =
-            new Color(0.35f, 0.75f, 1f, 1f);
+            new Color(0.05f, 0.45f, 1f, 1f);
         private static readonly Color inspectionSystemListCompletedColor =
             new Color(0.236f, 0.604f, 0f, 1f);
         private static readonly Color inspectionSystemListUnavailableColor =
             new Color(0.45f, 0.45f, 0.45f, 1f);
-        private static readonly List<InteractiveObject> inspectionSystemsOverlayTargets =
-            new List<InteractiveObject>();
+        private static readonly Color inspectionSystemListTextColor =
+            new Color(0.9f, 0.9f, 0.9f, 1f);
+        private const string RotaryEngineBlockPartId = "rot_new_blok_srodek_1";
+        private const string EngineOilDipstickPartId = "bagnet_1";
+        private const string EngineOilFillPlugPartId = "korekOleju_1";
+        private const string WasherReservoirPartId =
+            "windscreen_washer_reservoir_1_body";
+        private const string WasherReservoirCapPartId =
+            "windscreen_washer_cap_1";
         private static readonly List<PartScript> inspectionSystemsOverlaySolidTargets =
             new List<PartScript>();
+        private static readonly Dictionary<int, List<PartScript>>
+            inspectionSystemsOverlayPreviewPartsBySystem =
+            new Dictionary<int, List<PartScript>>();
+        private static readonly Dictionary<int, InteractiveObject>
+            inspectionSystemsOverlaySystemByPartId =
+            new Dictionary<int, InteractiveObject>();
+        private static readonly Dictionary<int, int>
+            inspectionSystemsOverlayMissingSlotByPartId =
+            new Dictionary<int, int>();
+        private static readonly Dictionary<long, PartScript>
+            inspectionSystemsOverlayMissingPartBySlot =
+            new Dictionary<long, PartScript>();
         private static readonly List<Renderer> inspectionSystemsOverlayHiddenRenderers =
             new List<Renderer>();
         private static readonly Dictionary<int, bool>
@@ -262,7 +257,6 @@ namespace Cms21GameplayPlus
         {
             internal Color Color;
             internal bool IsUnmounted;
-            internal bool IsExamined;
             internal bool MountMode;
             internal bool ReplacedShader;
             internal int Layer;
@@ -274,6 +268,13 @@ namespace Cms21GameplayPlus
         private static readonly Dictionary<int, Color>
             inspectionSystemsOverlaySolidOriginalColors =
             new Dictionary<int, Color>();
+        private static readonly Dictionary<int, Color>
+            inspectionSystemsOverlayXrayOriginalColors =
+            new Dictionary<int, Color>();
+        private static readonly Dictionary<int, bool>
+            inspectionSystemsOverlayMissingVisualDiagnosticStates =
+            new Dictionary<int, bool>();
+        private static bool inspectionXrayShaderDiagnosticsLogged;
         private static CarLoader inspectionSystemsOverlayLoader;
         private static bool inspectionSystemsOverlayActive;
         private static UiIntegrationBridge.NativeHintHandle
@@ -292,10 +293,22 @@ namespace Cms21GameplayPlus
         private static string inspectionSystemResetHintLabel;
         private static string inspectionVehicleResetHintLabel;
         private static string inspectionShowSystemsHintLabel;
+        private static float inspectionSystemResetHintProgress;
+        private static float inspectionVehicleResetHintProgress;
         private static string inspectionNativeHintSuppressionDiagnosticKey;
         private static int cachedInspectionSkillLevel = -1;
         private static string cachedInspectionSkillId;
         private static bool inspectionSkillDiagnosticsLogged;
+        private static int inspectionOverlayRaycastSystemId = int.MinValue;
+        private static int inspectionOverlayRaycastBodyId = int.MinValue;
+        private static int inspectionOverlayRaycastCurrentId = int.MinValue;
+        private static readonly List<Collider>
+            inspectionOverlayPointerColliders = new List<Collider>();
+        private static readonly HashSet<int>
+            inspectionOverlayPointerColliderIds = new HashSet<int>();
+        private static int inspectionOverlayPointerHitFrame = -1;
+        private static Transform inspectionOverlayPointerHitTransform;
+        private static bool inspectionOverlayPointerHitUsedBoundsFallback;
         private static RectTransform inspectionSystemListPanel;
         private static bool inspectionSystemListVisible;
         private static bool inspectionSystemListDirty = true;
@@ -311,6 +324,7 @@ namespace Cms21GameplayPlus
         private static bool localizeMethodResolved;
         private static MethodInfo localizeMethod;
         private static string bodyDisplayName;
+        private static string mouseOverDescriptionText;
         private static Camera bodySelectionCamera;
         private static UnityEngine.UI.Image sharpEyeCursorTimerImage;
 
@@ -319,14 +333,10 @@ namespace Cms21GameplayPlus
             shoppingListGeneration++;
             shoppingListWorkerRunning = false;
             examineModeSessionActive = false;
-            repeatClickArmed = false;
-            examineMouseWasDown = false;
-            RestoreAllCarriers();
             DestroySharpEyeCursorTimer();
             ClearPendingShoppingListQueue();
-            SystemSpecificationCountCache.Clear();
             SystemSpecificationPartIdsCache.Clear();
-            SystemSinglePartFallback.Clear();
+            SystemRequiredInspectionLevelCache.Clear();
             SystemWheelPartsCache.Clear();
             LoaderPartInstanceIds.Clear();
             SystemPassStates.Clear();
@@ -335,31 +345,26 @@ namespace Cms21GameplayPlus
             BodySelectionSurfacesCache.Clear();
             BodyPassStates.Clear();
             InspectionSystemsCache.Clear();
-            CarDisplayNameCache.Clear();
             SystemNameCache.Clear();
             bodyDisplayName = null;
+            mouseOverDescriptionText = null;
             bodySelectionCamera = null;
-            capturedExamineBody = null;
-            observedMouseOverTarget = null;
-            observedMouseOverFrame = -1;
-            observedBodyMouseOverTarget = null;
-            observedBodyMouseOverFrame = -1;
-            suppressMouseOverObservation = false;
-            ClearInspectionSystemsOverlay();
+            InspectionVisualSystem.Exit();
             ResetInspectionResetInput(true);
             cachedInspectionSkillLevel = -1;
             cachedInspectionSkillId = null;
             inspectionSkillDiagnosticsLogged = false;
+            ResetInspectionOverlayRaycastDiagnostics();
             DestroyInspectionSystemList();
             ResetInspectionVehicleProgressCache();
             ClearBodyHighlight();
-            DumpedInspectionLoaderIds.Clear();
             cursorVisualSourceDiagnosticsLogged = false;
             inspectionHintSourceDiagnosticsLogged = false;
             inspectionHintHost = null;
             inspectionNativeHintSuppressionDiagnosticKey = null;
             indicatorDirty = true;
             StartDiagnostics();
+            examineModeSessionActive = IsExamineGarageModeActive();
             if (activeProfileId == profileId)
                 return;
 
@@ -372,14 +377,10 @@ namespace Cms21GameplayPlus
             shoppingListGeneration++;
             shoppingListWorkerRunning = false;
             examineModeSessionActive = false;
-            repeatClickArmed = false;
-            examineMouseWasDown = false;
-            RestoreAllCarriers();
             DestroySharpEyeCursorTimer();
             ClearPendingShoppingListQueue();
-            SystemSpecificationCountCache.Clear();
             SystemSpecificationPartIdsCache.Clear();
-            SystemSinglePartFallback.Clear();
+            SystemRequiredInspectionLevelCache.Clear();
             SystemWheelPartsCache.Clear();
             LoaderPartInstanceIds.Clear();
             SystemPassStates.Clear();
@@ -388,25 +389,19 @@ namespace Cms21GameplayPlus
             BodySelectionSurfacesCache.Clear();
             BodyPassStates.Clear();
             InspectionSystemsCache.Clear();
-            CarDisplayNameCache.Clear();
             SystemNameCache.Clear();
             bodyDisplayName = null;
+            mouseOverDescriptionText = null;
             bodySelectionCamera = null;
-            capturedExamineBody = null;
-            observedMouseOverTarget = null;
-            observedMouseOverFrame = -1;
-            observedBodyMouseOverTarget = null;
-            observedBodyMouseOverFrame = -1;
-            suppressMouseOverObservation = false;
-            ClearInspectionSystemsOverlay();
+            InspectionVisualSystem.Exit();
             ResetInspectionResetInput(true);
             cachedInspectionSkillLevel = -1;
             cachedInspectionSkillId = null;
             inspectionSkillDiagnosticsLogged = false;
+            ResetInspectionOverlayRaycastDiagnostics();
             DestroyInspectionSystemList();
             ResetInspectionVehicleProgressCache();
             ClearBodyHighlight();
-            DumpedInspectionLoaderIds.Clear();
             cursorVisualSourceDiagnosticsLogged = false;
             inspectionHintSourceDiagnosticsLogged = false;
             inspectionNativeHintSuppressionDiagnosticKey = null;
@@ -414,19 +409,15 @@ namespace Cms21GameplayPlus
             LogDiagnostic("garage session ended");
         }
 
-        private static InspectionPath ResolveInspectionPath(
-            InteractiveObject system)
-        {
-            int requiredLevel = GetRequiredInspectionSkillLevel(system);
-            if (requiredLevel <= 0)
-                return InspectionPath.Native;
-            return GetInspectionSkillLevel() >= requiredLevel ?
-                InspectionPath.SharpEye : InspectionPath.Native;
-        }
-
         private static bool UsesSharpEyeInspection(InteractiveObject system)
         {
-            return ResolveInspectionPath(system) == InspectionPath.SharpEye;
+            int skillLevel = GetInspectionSkillLevel();
+            if (system == null || skillLevel <= 0)
+                return false;
+            if (IsWholeCarBodyObject(system) ||
+                IsBodyAggregateObject(GetCarLoader(system), system))
+                return true;
+            return HasAvailableInspectionPart(system, skillLevel);
         }
 
         private static int GetInspectionSkillLevel()
@@ -537,49 +528,95 @@ namespace Cms21GameplayPlus
         {
             if (system == null)
                 return 0;
+            if (IsWholeCarBodyObject(system) ||
+                IsBodyAggregateObject(GetCarLoader(system), system))
+                return 1;
 
-            string rawId = null;
+            int systemId;
             try {
-                rawId = NormalizeSystemName(system.GetID());
+                systemId = system.GetInstanceID();
+            } catch {
+                return 0;
+            }
+            int cached;
+            if (SystemRequiredInspectionLevelCache.TryGetValue(systemId,
+                    out cached))
+                return cached;
+
+            int level = MaximumInspectionSkillLevel + 1;
+            List<string> specification = GetSystemSpecificationPartIds(system);
+            for (int index = 0; index < specification.Count; index++) {
+                string partId = specification[index];
+                if (InspectionVisualSystem.IsDependentVisualPart(system,
+                        partId))
+                    continue;
+                int partLevel = GetPartInspectionSkillLevel(system, partId);
+                if (partLevel > 0 && partLevel < level)
+                    level = partLevel;
+            }
+            if (level > MaximumInspectionSkillLevel)
+                level = 0;
+            SystemRequiredInspectionLevelCache[systemId] = level;
+            return level;
+        }
+
+        private static int GetPartInspectionSkillLevel(
+            InteractiveObject system, string partId)
+        {
+            int configured;
+            if (SharpEyeInspectionRules.TryGetLevel(partId, out configured))
+                return configured;
+            return GetFallbackPartInspectionSkillLevel(system, partId);
+        }
+
+        private static int GetFallbackPartInspectionSkillLevel(
+            InteractiveObject system, string partId)
+        {
+            string rawId = null;
+            string objectName = null;
+            try {
+                rawId = NormalizeSystemName(system != null ?
+                    system.GetID() : null);
+                objectName = NormalizeSystemName(system != null ?
+                    system.name : null);
             } catch {
             }
-            string objectName = NormalizeSystemName(system.name);
+            string id = partId ?? string.Empty;
 
-            if (!string.IsNullOrEmpty(rawId)) {
-                if (rawId.StartsWith("engine_",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 6;
-                if (rawId.StartsWith("FrontRight",
+            if (rawId != null && rawId.StartsWith("engine_",
+                    StringComparison.OrdinalIgnoreCase))
+                return LooksLikeInternalPowertrainPart(id) ? 6 : 5;
+            if (rawId != null && (rawId.StartsWith("FrontRight",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("FrontLeft",
                         StringComparison.OrdinalIgnoreCase) ||
                     rawId.StartsWith("RearRight",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 5;
-                if (rawId.StartsWith("FrontCenter",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("RearLeft",
+                        StringComparison.OrdinalIgnoreCase)))
+                return LooksLikeDeepSuspensionPart(id) ? 5 : 4;
+            if (rawId != null && (rawId.StartsWith("FrontCenter",
                         StringComparison.OrdinalIgnoreCase) ||
                     rawId.StartsWith("RearCenter",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 4;
-                if (rawId.StartsWith("Driveshaft",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 4;
-                if (rawId.StartsWith("Exhaust",
                         StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("Downpipe",
+                    rawId.StartsWith("Driveshaft",
+                        StringComparison.OrdinalIgnoreCase)))
+                return 3;
+            if (objectName != null && (objectName.StartsWith("FCSusp",
                         StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("AirIntake",
+                    objectName.StartsWith("RCSusp",
+                        StringComparison.OrdinalIgnoreCase)))
+                return 3;
+            if (objectName != null && (objectName.StartsWith("FLSusp",
                         StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("Cooling",
+                    objectName.StartsWith("FRSusp",
                         StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("Radiator",
+                    objectName.StartsWith("RLSusp",
                         StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("FuelTank",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("ABS",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    rawId.StartsWith("BrakePump",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 3;
-                if (rawId.StartsWith("Battery",
+                    objectName.StartsWith("RRSusp",
+                        StringComparison.OrdinalIgnoreCase)))
+                return LooksLikeDeepSuspensionPart(id) ? 5 : 4;
+            if (rawId != null && (rawId.StartsWith("Battery",
                         StringComparison.OrdinalIgnoreCase) ||
                     rawId.StartsWith("CoolantReservoir",
                         StringComparison.OrdinalIgnoreCase) ||
@@ -590,31 +627,75 @@ namespace Cms21GameplayPlus
                     rawId.StartsWith("ECU",
                         StringComparison.OrdinalIgnoreCase) ||
                     rawId.StartsWith("FuseBox",
-                        StringComparison.OrdinalIgnoreCase))
-                    return 2;
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("ABS",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("BrakePump",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("Cooling",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("Radiator",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("AirIntake",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("FuelTank",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("Exhaust",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    rawId.StartsWith("Downpipe",
+                        StringComparison.OrdinalIgnoreCase)))
+                return 2;
+            return 5;
+        }
+
+        private static bool LooksLikeDeepSuspensionPart(string partId)
+        {
+            if (string.IsNullOrEmpty(partId))
+                return false;
+            return partId.IndexOf("tuleja",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                partId.IndexOf("lozysko",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                partId.IndexOf("tloczek",
+                    StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool LooksLikeInternalPowertrainPart(string partId)
+        {
+            if (string.IsNullOrEmpty(partId))
+                return false;
+            string value = partId.ToLowerInvariant();
+            return value.Contains("tlok") || value.Contains("piston") ||
+                value.Contains("korbow") || value.Contains("crank") ||
+                value.Contains("walek") || value.Contains("camshaft") ||
+                value.Contains("zawor") || value.Contains("valve") ||
+                value.Contains("popych") || value.Contains("rocker") ||
+                value.Contains("lancuch") || value.Contains("timing") ||
+                value.Contains("panew") || value.Contains("bearing") ||
+                value.Contains("rotor") || value.Contains("eccentric");
+        }
+
+        private static bool IsPartAvailableForInspection(
+            InteractiveObject system, string partId, int skillLevel)
+        {
+            if (InspectionVisualSystem.IsDependentVisualPart(system, partId))
+                return false;
+            int required = GetPartInspectionSkillLevel(system, partId);
+            return required > 0 && required <= skillLevel;
+        }
+
+        private static bool HasAvailableInspectionPart(
+            InteractiveObject system, int skillLevel)
+        {
+            if (system == null || skillLevel <= 0)
+                return false;
+            List<string> specification = GetSystemSpecificationPartIds(system);
+            for (int index = 0; index < specification.Count; index++) {
+                if (IsPartAvailableForInspection(system, specification[index],
+                        skillLevel))
+                    return true;
             }
-
-            if (objectName.StartsWith("FCSusp",
-                    StringComparison.OrdinalIgnoreCase) ||
-                objectName.StartsWith("RCSusp",
-                    StringComparison.OrdinalIgnoreCase))
-                return 4;
-
-            if (objectName.StartsWith("FLSusp",
-                    StringComparison.OrdinalIgnoreCase) ||
-                objectName.StartsWith("FRSusp",
-                    StringComparison.OrdinalIgnoreCase) ||
-                objectName.StartsWith("RLSusp",
-                    StringComparison.OrdinalIgnoreCase) ||
-                objectName.StartsWith("RRSusp",
-                    StringComparison.OrdinalIgnoreCase))
-                return 5;
-
-            if (IsWholeCarBodyObject(system))
-                return 1;
-            CarLoader loader = GetCarLoader(system);
-            return loader != null && IsBodyAggregateObject(loader, system) ?
-                1 : 0;
+            return false;
         }
 
         private static float GetSharpEyeHoldSeconds()
@@ -622,94 +703,11 @@ namespace Cms21GameplayPlus
             return CustomExamineHoldSeconds;
         }
 
-        internal static MethodBase FindExamineRandomPartMethod()
-        {
-            return AccessTools.Method(typeof(InteractiveObject),
-                nameof(InteractiveObject.ExamineRandomPart),
-                new Type[] { typeof(bool) });
-        }
-
         internal static MethodBase FindAddToShopListMethod()
         {
             return AccessTools.Method(typeof(UIManager),
                 nameof(UIManager.AddToShopList), new Type[] { typeof(string),
                     typeof(string), typeof(ShopListItemDataEx) });
-        }
-
-        internal static bool HandleExamineRandomPartPrefix(
-            InteractiveObject source, bool requested, ref bool result)
-        {
-            customExamineCall = false;
-            if (!requested || source == null ||
-                !GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive() ||
-                IsWholeCarBodyObject(source) || !UsesSharpEyeInspection(source))
-                return true;
-
-            SystemPassState state = GetSystemPassState(source);
-            if (state == null || !state.CustomContinuationActive)
-                return true;
-
-            ResetCarrierVisualHold(state);
-            RestoreCarrier(state);
-            if (ProcessOneCustomSystemStep(source)) {
-                result = true;
-                customExamineCall = true;
-                state.PassStarted = true;
-                indicatorDirty = true;
-                EnsureCustomContinuation(source, state);
-                return false;
-            }
-
-            state.CustomContinuationActive = false;
-            RestoreCarrier(state);
-            return true;
-        }
-
-        internal static void HandleExamineRandomPart(InteractiveObject source,
-            bool requested, ref bool result)
-        {
-            if (!requested || source == null ||
-                !GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive() ||
-                IsWholeCarBodyObject(source) || !UsesSharpEyeInspection(source))
-                return;
-
-            SystemPassState state = GetSystemPassState(source);
-            if (result) {
-                if (state != null)
-                    state.PassStarted = true;
-                indicatorDirty = true;
-                if (customExamineCall) {
-                    LogDiagnostic("custom examine success system=" +
-                        SafeIoId(source));
-                } else {
-                    LogDiagnostic("native examine success system=" +
-                        SafeIoId(source));
-                    TryStartCustomContinuation(source, state);
-                }
-                customExamineCall = false;
-                return;
-            }
-
-            if (ProcessOneCustomSystemStep(source)) {
-                result = true;
-                if (state != null) {
-                    state.PassStarted = true;
-                    state.CustomContinuationActive = true;
-                    EnsureCustomContinuation(source, state);
-                }
-                indicatorDirty = true;
-                LogDiagnostic("custom fallback success system=" +
-                    SafeIoId(source));
-                return;
-            }
-
-            if (state != null) {
-                state.CustomContinuationActive = false;
-                RestoreCarrier(state);
-            }
-            LogDiagnostic("system complete system=" + SafeIoId(source));
         }
 
         private static bool ProcessOneCustomSystemStep(InteractiveObject source)
@@ -732,76 +730,41 @@ namespace Cms21GameplayPlus
             return false;
         }
 
-        internal static void HandlePartExamine(PartScript part, bool requested,
-            bool wasExamined)
+        internal static bool ShouldAllowPartExamine(PartScript part,
+            bool requested)
         {
-            if (!requested || part == null ||
-                !GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive())
-                return;
+            if (!requested || part == null || processingCustomPartExamine)
+                return true;
+            if (!IsInspectionSceneActive() || !examineModeSessionActive ||
+                !IsExamineGarageModeActive())
+                return true;
 
-            bool isExamined = false;
+            CarLoader loader = null;
             try {
-                isExamined = part.IsExamined;
+                loader = part.GetComponentInParent<CarLoader>();
             } catch {
             }
-            if (!isExamined)
-                return;
-            if (processingCustomPartExamine) {
-                customExaminedPartInstanceId = part.GetInstanceID();
-                LogDiagnostic("custom part examined part=" + SafePartId(part));
-                return;
-            }
+            return loader == null;
+        }
 
-            InteractiveObject system = null;
+        internal static void HandlePartExamine(PartScript part, bool requested)
+        {
+            if (!requested || part == null || !processingCustomPartExamine)
+                return;
             try {
-                system = part.transform.GetComponentInParent<InteractiveObject>();
+                if (part.IsExamined) {
+                    customExaminedPartInstanceId = part.GetInstanceID();
+                    LogDiagnostic("custom part examined part=" +
+                        SafePartId(part));
+                }
             } catch {
             }
-            if (system == null || IsWholeCarBodyObject(system) ||
-                !UsesSharpEyeInspection(system))
-                return;
-
-            SystemPassState state = GetSystemPassState(system);
-            if (state != null) {
-                state.ExaminedPartInstanceIds.Add(part.GetInstanceID());
-                state.PassStarted = true;
-                state.NativeVisualProgress = 0f;
-                if (!processingCustomPartExamine)
-                    AddNativeCarrierCandidate(state, part);
-            }
-
-            MarkInspectionProgressChanged();
-            CarLoader loader = GetCarLoader(system);
-            if (loader != null)
-                QueueSinglePartShoppingList(loader, system, part);
-
-            if (wasExamined)
-                LogDiagnostic("native re-examine observed system=" +
-                    SafeIoId(system) + " part=" + SafePartId(part));
-        }
-
-        internal static void LogPopup(string title, string message,
-            PopupType popupType)
-        {
-            if (!examineModeSessionActive || !IsExamineGarageModeActive())
-                return;
-            LogDiagnostic("popup type=" + popupType + " title=\"" +
-                SafeLogText(title) + "\" message=\"" +
-                SafeLogText(message) + "\"");
-        }
-
-        internal static void LogSound(string method, string id)
-        {
-            if (!examineModeSessionActive || !IsExamineGarageModeActive())
-                return;
-            LogDiagnostic("sound " + method + " id=\"" +
-                SafeLogText(id) + "\"");
         }
 
         internal static void ObserveShopListAdd(string id, string suffix)
         {
-            if (suppressShopListObserver || string.IsNullOrEmpty(id))
+            if (!GlobalState.IsGarageSceneActive || suppressShopListObserver ||
+                string.IsNullOrEmpty(id))
                 return;
 
             PurchaseKey key = CreateObservedKey(id, suffix);
@@ -812,182 +775,28 @@ namespace Cms21GameplayPlus
 
         internal static void HandleGameModeChanged(gameMode currentMode)
         {
-            if (!GlobalState.IsGarageSceneActive)
-                return;
-
-            bool wasExamineGarage = examineModeSessionActive;
-            examineModeSessionActive = currentMode == gameMode.ExamineGarage;
-            indicatorDirty = true;
-            if (!wasExamineGarage && examineModeSessionActive) {
-                RestoreInspectionFooterAfterHold();
-                RestoreAllCarriers();
-                ClearInspectionSystemsOverlay();
-                BodyPartsCache.Clear();
-                BodyHighlightTargetsCache.Clear();
-                BodySelectionSurfacesCache.Clear();
-                InspectionSystemsCache.Clear();
-                SystemWheelPartsCache.Clear();
-                bodySelectionCamera = null;
-                capturedExamineBody = null;
-                observedMouseOverTarget = null;
-                observedMouseOverFrame = -1;
-                observedBodyMouseOverTarget = null;
-                observedBodyMouseOverFrame = -1;
-                suppressMouseOverObservation = false;
-                if (inspectionResetHintSource == null)
-                    inspectionResetHintSourceSearchAttempted = false;
-                ResetInspectionResetInput(false);
-                cachedInspectionSkillLevel = -1;
-                cachedInspectionSkillId = null;
-                inspectionSkillDiagnosticsLogged = false;
-                inspectionSystemListDirty = true;
-                ResetInspectionVehicleProgressCache();
-                GetInspectionSkillLevel();
-                ClearBodyHighlight();
-                repeatClickArmed = false;
-                examineMouseWasDown = Input.GetMouseButton(0);
-            }
-            if (wasExamineGarage && !examineModeSessionActive) {
-                RestoreAllCarriers();
-                ClearInspectionSystemsOverlay();
-                capturedExamineBody = null;
-                observedMouseOverTarget = null;
-                observedMouseOverFrame = -1;
-                observedBodyMouseOverTarget = null;
-                observedBodyMouseOverFrame = -1;
-                suppressMouseOverObservation = false;
-                HideInspectionFooterForModeExit();
-                DestroyInspectionSystemList();
-                ResetInspectionResetInput(false);
-                ClearBodyHighlight();
-                repeatClickArmed = false;
-                examineMouseWasDown = false;
-                DestroySharpEyeCursorTimer();
-                ClearSystemIndicator(true);
-            }
+            NativeInspectionModeReplacement.OnGameModeChanged(currentMode);
         }
 
         internal static bool CaptureExamineGarageRaycast(Raycast raycast)
         {
-            capturedExamineSystem = null;
-            capturedExamineBody = null;
-            if (!GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive() ||
-                raycast == null)
-                return true;
-
-            if (!Input.GetMouseButton(0))
-                RestoreInspectionFooterAfterHold();
-
-            InteractiveObject raycastObject = raycast.iO;
-            InteractiveObject systemObject = ResolveSystemHoverTarget(
-                raycast, raycastObject);
-            InteractiveObject bodyObject = systemObject == null ?
-                ResolveBodyHoverTarget(raycast, raycastObject) : null;
-            bool bodyTarget = bodyObject != null;
-            InteractiveObject current = systemObject ?? bodyObject;
-            if (UpdateInspectionSystemsOverlayInput(raycast, current))
-                return !Input.GetMouseButton(0);
-            if (UpdateInspectionResetInput(raycast, current, bodyTarget))
-                return false;
-            if (current != null && !UsesSharpEyeInspection(current)) {
-                PrepareNativeInspection();
-                return true;
-            }
-            if (current != null) {
-                if (bodyTarget)
-                    capturedExamineBody = current;
-                else
-                    capturedExamineSystem = current;
-            }
-
-            bool mouseDown = Input.GetMouseButton(0);
-            if (mouseDown && current != null)
-                SuppressInspectionFooterForHold();
-            if (!mouseDown)
-                repeatClickArmed = true;
-            bool mousePressed = mouseDown && !examineMouseWasDown;
-            examineMouseWasDown = mouseDown;
-
-            if (mousePressed && !bodyTarget)
-                LogExamineHoverProbe(raycast, raycastObject);
-
-            if (bodyTarget) {
-                // Let the stock hover raycast refresh while the button is up.
-                // Suppress it only during an actual body hold.
-                return !mouseDown;
-            }
-
-            if (current == null || !repeatClickArmed || !mousePressed)
-                return true;
-
-            int examined;
-            int total;
-            GetSystemProgress(current, out examined, out total);
-            SystemPassState state = GetSystemPassState(current);
-            int nativeTotal = GetRawNativeSystemPartCount(current);
-            int nativeExamined = GetRawNativeSystemExaminedCount(current);
-            bool nativePassExhausted = nativeTotal <= 0 ||
-                nativeExamined >= nativeTotal;
-            if (state != null && !state.PassStarted && examined > 0 &&
-                examined < total && nativePassExhausted &&
-                HasPendingCustomStep(current, state)) {
-                state.PassStarted = true;
-                state.CustomContinuationActive = true;
-                EnsureCustomContinuation(current, state);
-                repeatClickArmed = false;
-                indicatorDirty = true;
-                LogDiagnostic("resume preexisting pass system=" +
-                    SafeIoId(current) + " progress=" +
-                    examined.ToString(CultureInfo.InvariantCulture) + "/" +
-                    total.ToString(CultureInfo.InvariantCulture) +
-                    " native=" +
-                    nativeExamined.ToString(CultureInfo.InvariantCulture) +
-                    "/" + nativeTotal.ToString(CultureInfo.InvariantCulture));
-                return true;
-            }
-
-            return true;
+            return NativeInspectionModeReplacement.ShouldRunNativeRaycast(
+                raycast);
         }
 
-        private static bool UpdateInspectionSystemsOverlayInput(
-            Raycast raycast, InteractiveObject target)
+        internal static bool CaptureExamineConditionRaycast(Raycast raycast)
         {
-            bool keyDown = Input.GetKey(KeyCode.Tab);
-            if (!keyDown) {
-                if (inspectionSystemsOverlayActive)
-                    ClearInspectionSystemsOverlay();
-                return false;
-            }
-            if (Input.GetMouseButton(0) && !inspectionSystemsOverlayActive)
-                return false;
-
-            CarLoader loader = target != null ? GetCarLoader(target) : null;
-            if (loader == null)
-                loader = GetHoveredCarLoader(raycast);
-            if (loader == null)
-                loader = inspectionSystemsOverlayLoader;
-            if (loader == null)
-                loader = inspectionResetLoader;
-            if (loader == null)
-                return false;
-
-            bool changed = !inspectionSystemsOverlayActive ||
-                inspectionSystemsOverlayLoader == null;
-            if (!changed) {
-                try {
-                    changed = inspectionSystemsOverlayLoader.GetInstanceID() !=
-                        loader.GetInstanceID();
-                } catch {
-                    changed = true;
-                }
-            }
-            if (changed)
-                ShowInspectionSystemsOverlay(loader);
-            return inspectionSystemsOverlayActive;
+            return NativeInspectionModeReplacement.ShouldRunNativeRaycast(
+                raycast);
         }
 
-        private static void ShowInspectionSystemsOverlay(CarLoader loader)
+        internal static void HandleExamineConditionRaycast(Raycast raycast)
+        {
+            NativeInspectionModeReplacement.Tick(raycast);
+        }
+
+        private static void ShowInspectionSystemsOverlay(CarLoader loader,
+            int skillLevel)
         {
             if (loader == null)
                 return;
@@ -999,64 +808,685 @@ namespace Cms21GameplayPlus
             inspectionSystemsOverlayLoader = loader;
             inspectionResetLoader = loader;
             inspectionSystemsOverlayActive = true;
-            HideNativeExamineHint();
-            HashSet<int> highlighted = new HashSet<int>();
+            ResetInspectionOverlayRaycastDiagnostics();
             HashSet<int> solidHighlighted = new HashSet<int>();
-            int fullyUnmountedSystems = 0;
-            int skillLevel = GetInspectionSkillLevel();
+            int visibleMissingParts = 0;
+            int hiddenSystems = 0;
+            List<InteractiveObject> systems = GetInspectionSystems(loader);
 
-            BodyPassState bodyState = skillLevel > 0 ?
-                GetBodyPassState(loader) : null;
-            if (bodyState != null && bodyState.Total > 0) {
-                bool bodyComplete =
-                    bodyState.ExaminedSlots.Count >= bodyState.Total;
-                List<InteractiveObject> bodyTargets =
-                    GetBodyHighlightTargets(loader);
-                for (int index = 0; index < bodyTargets.Count; index++)
-                    AddInspectionSystemsOverlayTarget(bodyTargets[index],
-                        bodyComplete, highlighted, true);
+            if (skillLevel <= 0) {
+                for (int index = 0; index < systems.Count; index++) {
+                    InteractiveObject system = systems[index];
+                    if (system == null)
+                        continue;
+                    HideInspectionSystemsOverlayUnavailableSystem(system);
+                    hiddenSystems++;
+                }
+                LogDiagnostic("inspection systems overlay show car=" +
+                    SafeLoaderName(loader) +
+                    " skill=0 preview=disabled hiddenSystems=" +
+                    hiddenSystems.ToString(CultureInfo.InvariantCulture) +
+                    " bodyFrame=visible");
+                return;
             }
 
-            List<InteractiveObject> systems = GetInspectionSystems(loader);
             for (int index = 0; index < systems.Count; index++) {
                 InteractiveObject system = systems[index];
                 if (system == null)
                     continue;
-                int requiredLevel = GetRequiredInspectionSkillLevel(system);
-                if (requiredLevel < 2)
-                    continue;
-                if (requiredLevel > skillLevel) {
-                    HideInspectionSystemsOverlayUnavailableSystem(system);
-                    continue;
-                }
-                if (!UsesSharpEyeInspection(system))
-                    continue;
                 int examined;
-                int total;
-                GetSystemProgress(system, out examined, out total);
-                if (total <= 0)
-                    continue;
-                bool completed = examined >= total;
-                if (!IsSystemFullyUnmounted(system)) {
-                    AddInspectionSystemsOverlayTarget(system, completed,
-                        highlighted, true);
+                int available;
+                int full;
+                GetSystemAvailableProgress(system, skillLevel, out examined,
+                    out available, out full);
+                if (available <= 0) {
+                    HideInspectionSystemsOverlayUnavailableSystem(system);
+                    hiddenSystems++;
                     continue;
                 }
-                fullyUnmountedSystems++;
-                AddInspectionSystemsOverlaySolidSystem(system, completed,
-                    solidHighlighted);
+                InspectionVisualSystem.ApplyDependentPartVisibility(
+                    system, skillLevel, solidHighlighted);
+                bool hasAvailableMountedPart;
+                int systemMissingParts = AddInspectionSystemsOverlayParts(
+                    system, skillLevel, solidHighlighted,
+                    out hasAvailableMountedPart);
+                LogInspectionOverlaySystemProbe(system, skillLevel, examined,
+                    available, full, hasAvailableMountedPart,
+                    systemMissingParts);
+                visibleMissingParts += systemMissingParts;
             }
 
-            SetMouseOverDescription(ModLocalization.Get(
-                "LOC_SharpEyeShowSystems"));
             LogDiagnostic("inspection systems overlay show car=" +
-                SafeLoaderName(loader) + " outlines=" +
-                inspectionSystemsOverlayTargets.Count.ToString(
-                    CultureInfo.InvariantCulture) + " fullyUnmounted=" +
-                fullyUnmountedSystems.ToString(CultureInfo.InvariantCulture) +
+                SafeLoaderName(loader) + " skill=" +
+                skillLevel.ToString(CultureInfo.InvariantCulture) +
+                " missingParts=" +
+                visibleMissingParts.ToString(CultureInfo.InvariantCulture) +
                 " solidParts=" +
                 inspectionSystemsOverlaySolidTargets.Count.ToString(
-                    CultureInfo.InvariantCulture));
+                    CultureInfo.InvariantCulture) + " hiddenSystems=" +
+                hiddenSystems.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private static int AddInspectionSystemsOverlayParts(
+            InteractiveObject system, int skillLevel,
+            HashSet<int> solidHighlighted, out bool hasAvailableMountedPart)
+        {
+            hasAvailableMountedPart = false;
+            if (system == null)
+                return 0;
+
+            List<string> specification = GetSystemSpecificationPartIds(system);
+            List<int> missingSlots = GetMissingSpecificationSlots(system,
+                specification);
+            Dictionary<string, Queue<int>> missingById =
+                new Dictionary<string, Queue<int>>(
+                    StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < missingSlots.Count; index++) {
+                int slot = missingSlots[index];
+                if (slot < 0 || slot >= specification.Count)
+                    continue;
+                string id = specification[slot];
+                Queue<int> slots;
+                if (!missingById.TryGetValue(id, out slots)) {
+                    slots = new Queue<int>();
+                    missingById.Add(id, slots);
+                }
+                slots.Enqueue(slot);
+            }
+
+            SystemPassState state = GetSystemPassState(system);
+            int visibleMissing = 0;
+            List<PartScript> parts = GetSystemParts(system);
+            for (int index = 0; index < parts.Count; index++) {
+                PartScript part = parts[index];
+                if (part == null)
+                    continue;
+                string id = SafePartId(part);
+                if (InspectionVisualSystem.IsDependentVisualPart(system, id))
+                    continue;
+                if (string.IsNullOrEmpty(id) ||
+                    !IsPartAvailableForInspection(system, id, skillLevel)) {
+                    InspectionVisualSystem.HideUnavailablePart(part);
+                    continue;
+                }
+                if (!IsUnmountedPart(part)) {
+                    hasAvailableMountedPart = true;
+                    bool examined = state != null &&
+                        state.ExaminedPartInstanceIds.Contains(
+                            part.GetInstanceID());
+                    AddInspectionSystemsOverlayInstalledPart(part, examined,
+                        solidHighlighted);
+                    AddInspectionSystemsOverlayPreviewPart(system, part);
+                    continue;
+                }
+
+                Queue<int> slots;
+                if (!missingById.TryGetValue(id, out slots) ||
+                    slots.Count == 0) {
+                    InspectionVisualSystem.HideUnavailablePart(part);
+                    continue;
+                }
+                int slot = slots.Dequeue();
+                bool completed = state != null &&
+                    state.ExaminedMissingSlots.Contains(slot);
+                AddInspectionSystemsOverlaySolidPart(part, completed,
+                    solidHighlighted);
+                AddInspectionSystemsOverlayPreviewPart(system, part);
+                AddInspectionSystemsOverlayMissingPart(system, slot, part);
+                visibleMissing++;
+            }
+            return visibleMissing;
+        }
+
+        private static void AddInspectionSystemsOverlayPreviewPart(
+            InteractiveObject system, PartScript part)
+        {
+            if (system == null || part == null)
+                return;
+            int systemId;
+            int partId;
+            try {
+                systemId = system.GetInstanceID();
+                partId = part.GetInstanceID();
+            } catch {
+                return;
+            }
+            InteractiveObject mappedSystem;
+            if (inspectionSystemsOverlaySystemByPartId.TryGetValue(partId,
+                    out mappedSystem) && mappedSystem != null)
+                return;
+
+            List<PartScript> parts;
+            if (!inspectionSystemsOverlayPreviewPartsBySystem.TryGetValue(
+                    systemId, out parts)) {
+                parts = new List<PartScript>();
+                inspectionSystemsOverlayPreviewPartsBySystem.Add(systemId,
+                    parts);
+            }
+            parts.Add(part);
+            inspectionSystemsOverlaySystemByPartId[partId] = system;
+            AddInspectionOverlayPointerColliders(system, part);
+        }
+
+        private static void AddInspectionOverlayPointerColliders(
+            InteractiveObject system, PartScript part)
+        {
+            if (system == null || part == null)
+                return;
+            Collider[] colliders;
+            try {
+                colliders = part.GetComponentsInChildren<Collider>(true);
+            } catch {
+                return;
+            }
+            for (int index = 0; index < colliders.Length; index++) {
+                Collider collider = colliders[index];
+                if (collider == null || !collider.enabled)
+                    continue;
+                int colliderId;
+                try {
+                    colliderId = collider.GetInstanceID();
+                } catch {
+                    continue;
+                }
+                if (!inspectionOverlayPointerColliderIds.Add(colliderId))
+                    continue;
+                inspectionOverlayPointerColliders.Add(collider);
+            }
+        }
+
+        private static void AddInspectionSystemsOverlayMissingPart(
+            InteractiveObject system, int slot, PartScript part)
+        {
+            if (system == null || part == null || slot < 0)
+                return;
+            try {
+                int partId = part.GetInstanceID();
+                inspectionSystemsOverlayMissingSlotByPartId[partId] = slot;
+                inspectionSystemsOverlayMissingPartBySlot[
+                    GetInspectionSystemsOverlayMissingPartKey(system, slot)] =
+                    part;
+            } catch {
+            }
+        }
+
+        private static long GetInspectionSystemsOverlayMissingPartKey(
+            InteractiveObject system, int slot)
+        {
+            unchecked {
+                return ((long)system.GetInstanceID() << 32) | (uint)slot;
+            }
+        }
+
+        private static bool IsInspectionSystemsOverlayMissingPart(
+            PartScript part)
+        {
+            if (part == null)
+                return false;
+            try {
+                return inspectionSystemsOverlayMissingSlotByPartId.
+                    ContainsKey(part.GetInstanceID());
+            } catch {
+                return false;
+            }
+        }
+
+        private static bool IsInspectionLogicallyUnmountedPart(
+            PartScript part)
+        {
+            return part == null ||
+                IsInspectionSystemsOverlayMissingPart(part) ||
+                IsUnmountedPart(part);
+        }
+
+        private static bool IsInspectionSystemsOverlayMissingPartExamined(
+            InteractiveObject system, PartScript part)
+        {
+            if (system == null || part == null)
+                return false;
+            int slot;
+            try {
+                if (!inspectionSystemsOverlayMissingSlotByPartId.TryGetValue(
+                        part.GetInstanceID(), out slot))
+                    return false;
+            } catch {
+                return false;
+            }
+            SystemPassState state = GetSystemPassState(system);
+            return state != null && state.ExaminedMissingSlots.Contains(slot);
+        }
+        private static void SetInspectionSystemsOverlayMissingPartColor(
+            PartScript part, bool examined)
+        {
+            if (part == null)
+                return;
+            Color color = examined ?
+                inspectionCompletedMissingSystemColor : Color.white;
+            bool logTransition =
+                ShouldLogInspectionMissingVisualTransition(part, examined);
+            if (logTransition)
+                LogInspectionMissingVisualState(part, examined, "before");
+            try {
+                part.Alpha1();
+                global::CarHelper.SetXrayAlpha(part.transform,
+                    InspectionMissingPartXrayAlpha);
+                SetInspectionSystemsOverlayXrayColor(part, color);
+            } catch (Exception exception) {
+                if (logTransition)
+                    LogDiagnostic("inspection visual missing apply failed part=" +
+                        SafePartId(part) + " examined=" +
+                        examined.ToString() + " exception=" +
+                        exception.GetType().Name);
+            }
+            if (logTransition)
+                LogInspectionMissingVisualState(part, examined, "after");
+        }
+
+        private static bool ShouldLogInspectionMissingVisualTransition(
+            PartScript part, bool examined)
+        {
+            if (part == null)
+                return false;
+            int partId;
+            try {
+                partId = part.GetInstanceID();
+            } catch {
+                return false;
+            }
+            bool previous;
+            if (!inspectionSystemsOverlayMissingVisualDiagnosticStates.
+                    TryGetValue(partId, out previous)) {
+                inspectionSystemsOverlayMissingVisualDiagnosticStates[partId] =
+                    examined;
+                return examined;
+            }
+            if (previous == examined)
+                return false;
+            inspectionSystemsOverlayMissingVisualDiagnosticStates[partId] =
+                examined;
+            return true;
+        }
+
+        private static void LogInspectionMissingVisualState(PartScript part,
+            bool examined, string stage)
+        {
+            if (part == null)
+                return;
+            int partId;
+            try {
+                partId = part.GetInstanceID();
+            } catch {
+                return;
+            }
+            InteractiveObject system = null;
+            inspectionSystemsOverlaySystemByPartId.TryGetValue(partId,
+                out system);
+            int slot = -1;
+            inspectionSystemsOverlayMissingSlotByPartId.TryGetValue(partId,
+                out slot);
+            Color partColor = Color.white;
+            try {
+                partColor = part.GetColor();
+            } catch {
+            }
+            LogDiagnostic("inspection visual missing state stage=" + stage +
+                " system=" + SafeIoId(system) + " part=" + SafePartId(part) +
+                " instance=" + partId.ToString(CultureInfo.InvariantCulture) +
+                " slot=" + slot.ToString(CultureInfo.InvariantCulture) +
+                " examined=" + examined.ToString() + " unmounted=" +
+                IsUnmountedPart(part).ToString() + " mountMode=" +
+                part.mountMode.ToString() + " replacedShader=" +
+                part.replacedShader.ToString() + " partColor=" +
+                FormatInspectionVisualColor(partColor) + " alpha=" +
+                InspectionMissingPartXrayAlpha.ToString("0.###",
+                    CultureInfo.InvariantCulture) + " materials=" +
+                GetInspectionMissingVisualMaterialState(part));
+
+            if (!inspectionXrayShaderDiagnosticsLogged) {
+                LogInspectionXrayApiSurface();
+                LogInspectionXrayShaderProperties(part, stage);
+                if (string.Equals(stage, "after",
+                        StringComparison.OrdinalIgnoreCase))
+                    inspectionXrayShaderDiagnosticsLogged = true;
+            }
+        }
+
+        private static void LogInspectionXrayApiSurface()
+        {
+            LogInspectionXrayMethods(typeof(global::CarHelper),
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Static, "CarHelper");
+            LogInspectionXrayMethods(typeof(PartScript),
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Instance, "PartScript");
+        }
+
+        private static void LogInspectionXrayMethods(Type type,
+            BindingFlags flags, string owner)
+        {
+            if (type == null)
+                return;
+            try {
+                MethodInfo[] methods = type.GetMethods(flags);
+                for (int index = 0; index < methods.Length; index++) {
+                    MethodInfo method = methods[index];
+                    if (method == null)
+                        continue;
+                    string name = method.Name ?? string.Empty;
+                    if (name.IndexOf("xray",
+                            StringComparison.OrdinalIgnoreCase) < 0 &&
+                        name.IndexOf("color",
+                            StringComparison.OrdinalIgnoreCase) < 0 &&
+                        name.IndexOf("shader",
+                            StringComparison.OrdinalIgnoreCase) < 0 &&
+                        name.IndexOf("alpha",
+                            StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+                    ParameterInfo[] parameters = method.GetParameters();
+                    string signature = string.Empty;
+                    for (int parameterIndex = 0;
+                        parameterIndex < parameters.Length; parameterIndex++) {
+                        if (parameterIndex > 0)
+                            signature += ",";
+                        ParameterInfo parameter = parameters[parameterIndex];
+                        signature += parameter.ParameterType != null ?
+                            parameter.ParameterType.Name : "?";
+                    }
+                    LogDiagnostic("inspection visual xray api owner=" + owner +
+                        " method=" + name + " args=" + signature +
+                        " return=" + (method.ReturnType != null ?
+                            method.ReturnType.Name : "?"));
+                }
+            } catch (Exception exception) {
+                LogDiagnostic("inspection visual xray api failed owner=" +
+                    owner + " exception=" + exception.GetType().Name);
+            }
+        }
+
+        private static void LogInspectionXrayShaderProperties(PartScript part,
+            string stage)
+        {
+            if (part == null)
+                return;
+            try {
+                Renderer[] renderers =
+                    part.GetComponentsInChildren<Renderer>(true);
+                int xrayMaterials = 0;
+                for (int rendererIndex = 0; rendererIndex < renderers.Length;
+                    rendererIndex++) {
+                    Renderer renderer = renderers[rendererIndex];
+                    if (renderer == null)
+                        continue;
+                    MaterialPropertyBlock block = new MaterialPropertyBlock();
+                    renderer.GetPropertyBlock(block);
+                    Material[] materials = renderer.materials;
+                    for (int materialIndex = 0; materialIndex < materials.Length;
+                        materialIndex++) {
+                        Material material = materials[materialIndex];
+                        Shader shader = material != null ? material.shader : null;
+                        string shaderName = shader != null ?
+                            shader.name : string.Empty;
+                        if (material == null || shader == null ||
+                            shaderName.IndexOf("Xray",
+                                StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
+                        if (xrayMaterials++ >= 2)
+                            return;
+                        LogDiagnostic("inspection visual xray material stage=" +
+                            stage + " renderer=" + renderer.name + " shader=" +
+                            shaderName + " propertyBlockEmpty=" +
+                            block.isEmpty.ToString() + " renderQueue=" +
+                            material.renderQueue.ToString(
+                                CultureInfo.InvariantCulture));
+                        LogInspectionShaderPropertyList(material, shader, stage,
+                            renderer.name);
+                    }
+                }
+            } catch (Exception exception) {
+                LogDiagnostic("inspection visual xray material dump failed stage=" +
+                    stage + " part=" + SafePartId(part) + " exception=" +
+                    exception.GetType().Name);
+            }
+        }
+
+        private static void LogInspectionShaderPropertyList(Material material,
+            Shader shader, string stage, string rendererName)
+        {
+            if (material == null || shader == null)
+                return;
+            try {
+                Type shaderType = shader.GetType();
+                MethodInfo getCount = shaderType.GetMethod("GetPropertyCount",
+                    BindingFlags.Public | BindingFlags.Instance, null,
+                    Type.EmptyTypes, null);
+                MethodInfo getName = shaderType.GetMethod("GetPropertyName",
+                    BindingFlags.Public | BindingFlags.Instance, null,
+                    new Type[] { typeof(int) }, null);
+                MethodInfo getType = shaderType.GetMethod("GetPropertyType",
+                    BindingFlags.Public | BindingFlags.Instance, null,
+                    new Type[] { typeof(int) }, null);
+                if (getCount == null || getName == null) {
+                    LogDiagnostic("inspection visual xray properties unavailable " +
+                        "stage=" + stage + " shader=" + shader.name);
+                    return;
+                }
+                int count = Convert.ToInt32(getCount.Invoke(shader, null),
+                    CultureInfo.InvariantCulture);
+                if (count > 64)
+                    count = 64;
+                for (int index = 0; index < count; index++) {
+                    string propertyName = Convert.ToString(getName.Invoke(shader,
+                        new object[] { index }), CultureInfo.InvariantCulture);
+                    if (string.IsNullOrEmpty(propertyName) ||
+                        !material.HasProperty(propertyName))
+                        continue;
+                    string propertyType = "?";
+                    if (getType != null) {
+                        object rawType = getType.Invoke(shader,
+                            new object[] { index });
+                        if (rawType != null)
+                            propertyType = rawType.ToString();
+                    }
+                    string value = GetInspectionShaderPropertyValue(material,
+                        propertyName, propertyType);
+                    LogDiagnostic("inspection visual xray property stage=" + stage +
+                        " renderer=" + rendererName + " index=" +
+                        index.ToString(CultureInfo.InvariantCulture) +
+                        " name=" + propertyName + " type=" + propertyType +
+                        " value=" + value);
+                }
+            } catch (Exception exception) {
+                LogDiagnostic("inspection visual xray properties failed stage=" +
+                    stage + " shader=" + shader.name + " exception=" +
+                    exception.GetType().Name);
+            }
+        }
+
+        private static string GetInspectionShaderPropertyValue(
+            Material material, string propertyName, string propertyType)
+        {
+            if (material == null || string.IsNullOrEmpty(propertyName))
+                return "-";
+            try {
+                if (propertyType.IndexOf("Color",
+                        StringComparison.OrdinalIgnoreCase) >= 0)
+                    return FormatInspectionVisualColor(
+                        material.GetColor(propertyName));
+                if (propertyType.IndexOf("Vector",
+                        StringComparison.OrdinalIgnoreCase) >= 0) {
+                    Vector4 value = material.GetVector(propertyName);
+                    return "(" + value.x.ToString("0.###",
+                        CultureInfo.InvariantCulture) + "," +
+                        value.y.ToString("0.###", CultureInfo.InvariantCulture) +
+                        "," + value.z.ToString("0.###",
+                            CultureInfo.InvariantCulture) + "," +
+                        value.w.ToString("0.###",
+                            CultureInfo.InvariantCulture) + ")";
+                }
+                if (propertyType.IndexOf("Texture",
+                        StringComparison.OrdinalIgnoreCase) >= 0) {
+                    Texture texture = material.GetTexture(propertyName);
+                    return texture != null ? texture.name : "<null>";
+                }
+                return material.GetFloat(propertyName).ToString("0.###",
+                    CultureInfo.InvariantCulture);
+            } catch {
+                return "?";
+            }
+        }
+
+        private static string GetInspectionMissingVisualMaterialState(
+            PartScript part)
+        {
+            if (part == null)
+                return "<none>";
+            string result = string.Empty;
+            int materialCount = 0;
+            try {
+                foreach (Renderer renderer in
+                    part.GetComponentsInChildren<Renderer>(true)) {
+                    if (renderer == null)
+                        continue;
+                    foreach (Material material in renderer.materials) {
+                        if (material == null)
+                            continue;
+                        if (materialCount++ >= 8)
+                            return result + ";...";
+                        if (result.Length > 0)
+                            result += ";";
+                        string shaderName = material.shader != null ?
+                            material.shader.name : "<null>";
+                        result += renderer.name + "/" + shaderName +
+                            " emission=" + GetInspectionMaterialColor(
+                                material, InspectionXrayColorProperty) +
+                            " color=" + GetInspectionMaterialColor(material,
+                                "_Color") + " base=" +
+                            GetInspectionMaterialColor(material, "_BaseColor") +
+                            " solid=" + GetInspectionMaterialColor(material,
+                                InspectionSolidColorProperty);
+                    }
+                }
+            } catch (Exception exception) {
+                return "<failed:" + exception.GetType().Name + ">";
+            }
+            return result.Length > 0 ? result : "<none>";
+        }
+
+        private static string GetInspectionMaterialColor(Material material,
+            string property)
+        {
+            if (material == null || string.IsNullOrEmpty(property))
+                return "-";
+            try {
+                if (!material.HasProperty(property))
+                    return "-";
+                return FormatInspectionVisualColor(material.GetColor(property));
+            } catch {
+                return "?";
+            }
+        }
+
+        private static string FormatInspectionVisualColor(Color color)
+        {
+            return "(" + color.r.ToString("0.###", CultureInfo.InvariantCulture) +
+                "," + color.g.ToString("0.###", CultureInfo.InvariantCulture) +
+                "," + color.b.ToString("0.###", CultureInfo.InvariantCulture) +
+                "," + color.a.ToString("0.###", CultureInfo.InvariantCulture) +
+                ")";
+        }
+
+        private static void SetInspectionSystemsOverlayPreviewHover(
+            InteractiveObject system, bool active, bool completed = false)
+        {
+            if (system == null)
+                return;
+            int systemId;
+            try {
+                systemId = system.GetInstanceID();
+            } catch {
+                return;
+            }
+            List<PartScript> parts;
+            if (!inspectionSystemsOverlayPreviewPartsBySystem.TryGetValue(
+                    systemId, out parts))
+                return;
+            SystemPassState state = GetSystemPassState(system);
+            for (int index = 0; index < parts.Count; index++) {
+                PartScript part = parts[index];
+                if (part == null)
+                    continue;
+                try {
+                    if (IsInspectionSystemsOverlayMissingPart(part)) {
+                        SetInspectionSystemsOverlayMissingPartColor(part,
+                            IsInspectionSystemsOverlayMissingPartExamined(
+                                system, part));
+                    } else if (InspectionVisualSystem.IsDependentVisualPart(
+                            system, SafePartId(part))) {
+                        SetInspectionSystemsOverlayInstalledPartColor(part,
+                            false);
+                    } else {
+                        bool partExamined = state != null &&
+                            state.ExaminedPartInstanceIds.Contains(
+                                part.GetInstanceID());
+                        SetInspectionSystemsOverlayInstalledPartColor(part,
+                            partExamined);
+                    }
+                } catch {
+                }
+            }
+        }
+
+        private static void HideInspectionSystemsOverlayUnavailableTransform(
+            Transform root)
+        {
+            if (root == null)
+                return;
+            foreach (Renderer renderer in
+                root.GetComponentsInChildren<Renderer>(true)) {
+                if (renderer == null)
+                    continue;
+                int rendererId = renderer.GetInstanceID();
+                if (!inspectionSystemsOverlayHiddenRendererStates.
+                    ContainsKey(rendererId)) {
+                    inspectionSystemsOverlayHiddenRendererStates[rendererId] =
+                        renderer.enabled;
+                    inspectionSystemsOverlayHiddenRenderers.Add(renderer);
+                }
+                renderer.enabled = false;
+            }
+            foreach (Collider collider in
+                root.GetComponentsInChildren<Collider>(true)) {
+                if (collider == null)
+                    continue;
+                int colliderId = collider.GetInstanceID();
+                if (!inspectionSystemsOverlayHiddenColliderStates.
+                    ContainsKey(colliderId)) {
+                    inspectionSystemsOverlayHiddenColliderStates[colliderId] =
+                        collider.enabled;
+                    inspectionSystemsOverlayHiddenColliders.Add(collider);
+                }
+                collider.enabled = false;
+            }
+        }
+
+        private static void ShowInspectionSystemsOverlayDependentTransform(
+            Transform root)
+        {
+            if (root == null)
+                return;
+            foreach (Renderer renderer in
+                root.GetComponentsInChildren<Renderer>(true)) {
+                if (renderer == null)
+                    continue;
+                int rendererId = renderer.GetInstanceID();
+                if (!inspectionSystemsOverlayHiddenRendererStates.
+                    ContainsKey(rendererId)) {
+                    inspectionSystemsOverlayHiddenRendererStates[rendererId] =
+                        renderer.enabled;
+                    inspectionSystemsOverlayHiddenRenderers.Add(renderer);
+                }
+                renderer.enabled = true;
+            }
         }
 
         private static void HideInspectionSystemsOverlayUnavailableSystem(
@@ -1064,124 +1494,122 @@ namespace Cms21GameplayPlus
         {
             if (system == null)
                 return;
-            foreach (Renderer renderer in
-                system.GetComponentsInChildren<Renderer>(true)) {
-                if (renderer == null)
-                    continue;
-                int rendererId = renderer.GetInstanceID();
-                if (inspectionSystemsOverlayHiddenRendererStates.
-                    ContainsKey(rendererId))
-                    continue;
-                inspectionSystemsOverlayHiddenRendererStates[rendererId] =
-                    renderer.enabled;
-                inspectionSystemsOverlayHiddenRenderers.Add(renderer);
-                renderer.enabled = false;
-            }
-            foreach (Collider collider in
-                system.GetComponentsInChildren<Collider>(true)) {
-                if (collider == null)
-                    continue;
-                int colliderId = collider.GetInstanceID();
-                if (inspectionSystemsOverlayHiddenColliderStates.
-                    ContainsKey(colliderId))
-                    continue;
-                inspectionSystemsOverlayHiddenColliderStates[colliderId] =
-                    collider.enabled;
-                inspectionSystemsOverlayHiddenColliders.Add(collider);
-                collider.enabled = false;
-            }
-        }
-
-        private static void AddInspectionSystemsOverlayTarget(
-            InteractiveObject target, bool completed, HashSet<int> highlighted,
-            bool outline)
-        {
-            if (target == null || highlighted == null || !outline)
-                return;
-            int targetId;
-            try {
-                targetId = target.GetInstanceID();
-            } catch {
-                return;
-            }
-            if (!highlighted.Add(targetId))
-                return;
-            bool previousSuppression = suppressMouseOverObservation;
-            try {
-                suppressMouseOverObservation = true;
-                target.SetMouseOver(true, completed ? Color.green :
-                    Color.white);
-                inspectionSystemsOverlayTargets.Add(target);
-            } catch {
-            } finally {
-                suppressMouseOverObservation = previousSuppression;
-            }
-        }
-
-        private static void AddInspectionSystemsOverlaySolidSystem(
-            InteractiveObject system, bool completed, HashSet<int> highlighted)
-        {
-            if (system == null || highlighted == null)
-                return;
+            HideInspectionSystemsOverlayUnavailableTransform(system.transform);
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null)
-                    continue;
-                int partId;
-                try {
-                    partId = part.GetInstanceID();
-                } catch {
-                    continue;
-                }
-                if (!highlighted.Add(partId))
-                    continue;
-                try {
-                    InspectionOverlayPartState state =
-                        new InspectionOverlayPartState();
-                    state.Color = part.GetColor();
-                    state.IsUnmounted = part.IsUnmounted;
-                    state.IsExamined = part.IsExamined;
-                    state.MountMode = part.mountMode;
-                    state.ReplacedShader = part.replacedShader;
-                    state.Layer = part.gameObject != null ?
-                        part.gameObject.layer : InspectionPreviewPartLayer;
-                    inspectionSystemsOverlaySolidOriginalStates[partId] =
-                        state;
-                    inspectionSystemsOverlaySolidTargets.Add(part);
+                if (part != null)
+                    InspectionVisualSystem.HideUnavailablePart(part);
+            }
+        }
 
-                    part.IsUnmounted = false;
-                    part.IsExamined = completed;
-                    part.mountMode = true;
-                    part.ReplaceShader(false);
-                    SetInspectionSystemsOverlayMountedLayers(part, state.Layer);
-                    part.SwitchSolidColor(true);
-                    part.Alpha1();
-                    if (completed)
-                        SetInspectionSystemsOverlayCompletedColor(part);
-                } catch (Exception exception) {
-                    LogDiagnostic("inspection overlay solid failed system=" +
-                        SafeIoId(system) + " part=" + SafePartId(part) +
-                        " exception=" + exception.GetType().Name);
-                }
+        private static void AddInspectionSystemsOverlayInstalledPart(
+            PartScript part, bool examined, HashSet<int> highlighted)
+        {
+            if (part == null || highlighted == null)
+                return;
+            int partId;
+            try {
+                partId = part.GetInstanceID();
+            } catch {
+                return;
+            }
+            if (!highlighted.Add(partId))
+                return;
+            CaptureInspectionSystemsOverlayPartState(part, partId);
+            try {
+                part.ReplaceShader(false);
+                SetInspectionSystemsOverlayMountedLayers(part);
+                SetInspectionSystemsOverlayInstalledPartColor(part, examined);
+            } catch (Exception exception) {
+                LogDiagnostic("inspection visual installed failed part=" +
+                    SafePartId(part) + " exception=" +
+                    exception.GetType().Name);
+            }
+        }
+
+        private static void SetInspectionSystemsOverlayInstalledPartColor(
+            PartScript part, bool examined)
+        {
+            if (part == null)
+                return;
+            try {
+                part.UpdateShaderParams(true);
+                part.Alpha1();
+            } catch {
+            }
+        }
+
+        private static void CaptureInspectionSystemsOverlayPartState(
+            PartScript part, int partId)
+        {
+            if (part == null ||
+                inspectionSystemsOverlaySolidOriginalStates.ContainsKey(
+                    partId))
+                return;
+            InspectionOverlayPartState state =
+                new InspectionOverlayPartState();
+            state.Color = part.GetColor();
+            state.IsUnmounted = part.IsUnmounted;
+            state.MountMode = part.mountMode;
+            state.ReplacedShader = part.replacedShader;
+            state.Layer = part.gameObject != null ?
+                part.gameObject.layer : InspectionPreviewPartLayer;
+            inspectionSystemsOverlaySolidOriginalStates[partId] = state;
+            inspectionSystemsOverlaySolidTargets.Add(part);
+        }
+
+        private static void AddInspectionSystemsOverlaySolidPart(
+            PartScript part, bool completed, HashSet<int> highlighted)
+        {
+            if (part == null || highlighted == null)
+                return;
+            int partId;
+            try {
+                partId = part.GetInstanceID();
+            } catch {
+                return;
+            }
+            if (!highlighted.Add(partId))
+                return;
+            try {
+                CaptureInspectionSystemsOverlayPartState(part, partId);
+                SetInspectionSystemsOverlayMountedLayers(part);
+                part.SwitchSolidColor(false);
+                SetInspectionSystemsOverlayMissingPartColor(part,
+                    completed);
+            } catch (Exception exception) {
+                LogDiagnostic("inspection overlay solid failed part=" +
+                    SafePartId(part) + " exception=" +
+                    exception.GetType().Name);
             }
         }
 
         private static void SetInspectionSystemsOverlayMountedLayers(
-            PartScript part, int colliderLayer)
+            PartScript part)
         {
             if (part == null)
                 return;
             part.SetLayerRecursively(InspectionMountedPartLayer);
             foreach (Collider collider in
                 part.GetComponentsInChildren<Collider>(true)) {
-                if (collider != null && collider.gameObject != null)
-                    collider.gameObject.layer = colliderLayer;
+                if (collider == null)
+                    continue;
+                int colliderId = collider.GetInstanceID();
+                if (!inspectionSystemsOverlayHiddenColliderStates.
+                    ContainsKey(colliderId)) {
+                    inspectionSystemsOverlayHiddenColliderStates[colliderId] =
+                        collider.enabled;
+                    inspectionSystemsOverlayHiddenColliders.Add(collider);
+                }
+                collider.enabled = true;
+                if (collider.gameObject != null)
+                    collider.gameObject.layer = InspectionMountedPartLayer;
             }
         }
 
-        private static void SetInspectionSystemsOverlayCompletedColor(
-            PartScript part)
+        private static void SetInspectionSystemsOverlaySolidColor(
+            PartScript part, Color color)
         {
             if (part == null)
                 return;
@@ -1189,7 +1617,7 @@ namespace Cms21GameplayPlus
                 part.GetComponentsInChildren<Renderer>(true)) {
                 if (renderer == null)
                     continue;
-                foreach (Material material in renderer.sharedMaterials) {
+                foreach (Material material in renderer.materials) {
                     if (material == null ||
                         !material.HasProperty(InspectionSolidColorProperty))
                         continue;
@@ -1199,8 +1627,68 @@ namespace Cms21GameplayPlus
                         inspectionSystemsOverlaySolidOriginalColors[materialId] =
                             material.GetColor(InspectionSolidColorProperty);
                     }
-                    material.SetColor(InspectionSolidColorProperty,
-                        inspectionCompletedMissingSystemColor);
+                    material.SetColor(InspectionSolidColorProperty, color);
+                }
+            }
+        }
+
+        private static void SetInspectionSystemsOverlayXrayColor(
+            PartScript part, Color color)
+        {
+            if (part == null)
+                return;
+            int partId = part.GetInstanceID();
+            foreach (Renderer renderer in
+                part.GetComponentsInChildren<Renderer>(true)) {
+                if (renderer == null)
+                    continue;
+                PartScript owner = renderer.GetComponentInParent<PartScript>();
+                if (owner == null || owner.GetInstanceID() != partId)
+                    continue;
+                foreach (Material material in renderer.materials) {
+                    if (material == null || material.shader == null ||
+                        !string.Equals(material.shader.name, "CMS21/Xray",
+                            StringComparison.Ordinal))
+                        continue;
+                    int materialId = material.GetInstanceID();
+                    if (material.HasProperty(InspectionXrayColorProperty)) {
+                        if (!inspectionSystemsOverlayXrayOriginalColors.
+                            ContainsKey(materialId)) {
+                            inspectionSystemsOverlayXrayOriginalColors[materialId] =
+                                material.GetColor(InspectionXrayColorProperty);
+                        }
+                        material.SetColor(InspectionXrayColorProperty, color);
+                    }
+                    if (material.HasProperty(InspectionSolidColorProperty)) {
+                        if (!inspectionSystemsOverlaySolidOriginalColors.
+                            ContainsKey(materialId)) {
+                            inspectionSystemsOverlaySolidOriginalColors[materialId] =
+                                material.GetColor(InspectionSolidColorProperty);
+                        }
+                        material.SetColor(InspectionSolidColorProperty, color);
+                    }
+                }
+            }
+        }
+
+        private static void RestoreInspectionSystemsOverlayXrayColors(
+            PartScript part)
+        {
+            if (part == null)
+                return;
+            foreach (Renderer renderer in
+                part.GetComponentsInChildren<Renderer>(true)) {
+                if (renderer == null)
+                    continue;
+                foreach (Material material in renderer.materials) {
+                    if (material == null ||
+                        !material.HasProperty(InspectionXrayColorProperty))
+                        continue;
+                    Color color;
+                    if (inspectionSystemsOverlayXrayOriginalColors.TryGetValue(
+                        material.GetInstanceID(), out color)) {
+                        material.SetColor(InspectionXrayColorProperty, color);
+                    }
                 }
             }
         }
@@ -1214,7 +1702,7 @@ namespace Cms21GameplayPlus
                 part.GetComponentsInChildren<Renderer>(true)) {
                 if (renderer == null)
                     continue;
-                foreach (Material material in renderer.sharedMaterials) {
+                foreach (Material material in renderer.materials) {
                     if (material == null ||
                         !material.HasProperty(InspectionSolidColorProperty))
                         continue;
@@ -1227,258 +1715,190 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static bool IsSystemFullyUnmounted(InteractiveObject system)
-        {
-            List<string> specification = GetSystemSpecificationPartIds(system);
-            if (specification.Count == 0)
-                return false;
-            List<int> missing = GetMissingSpecificationSlots(system,
-                specification);
-            return missing.Count >= specification.Count;
-        }
-
-        private static void UpdateInspectionSystemsOverlayIndicator(
-            CarLoader loader)
-        {
-            int completed;
-            int total;
-            GetInspectionSystemsProgress(loader, out completed, out total);
-            string template = ModLocalization.Get(
-                "LOC_SharpEyeSystemsProgress");
-            string text;
-            try {
-                text = string.Format(CultureInfo.InvariantCulture, template,
-                    completed, total);
-            } catch {
-                text = completed.ToString(CultureInfo.InvariantCulture) +
-                    " / " + total.ToString(CultureInfo.InvariantCulture);
-            }
-            try {
-                UIManager ui = UIManager.Get();
-                if (ui != null)
-                    ui.SetBonusTextDescription(text);
-                indicatorSystem = null;
-                indicatorText = text;
-                indicatorDirty = false;
-            } catch {
-            }
-        }
-
-        private static void RestoreInspectionSystemsOverlayIndicator()
-        {
-            if (!inspectionSystemsOverlayActive ||
-                string.IsNullOrEmpty(indicatorText))
-                return;
-            try {
-                UIManager ui = UIManager.Get();
-                if (ui != null)
-                    ui.SetBonusTextDescription(indicatorText);
-            } catch {
-            }
-        }
-
-        private static void GetInspectionSystemsProgress(CarLoader loader,
-            out int completed, out int total)
-        {
-            completed = 0;
-            total = 0;
-            if (loader == null)
-                return;
-
-            int skillLevel = GetInspectionSkillLevel();
-            BodyPassState bodyState = skillLevel > 0 ?
-                GetBodyPassState(loader) : null;
-            if (bodyState != null && bodyState.Total > 0) {
-                total++;
-                if (bodyState.ExaminedSlots.Count >= bodyState.Total)
-                    completed++;
-            }
-
-            List<InteractiveObject> systems = GetInspectionSystems(loader);
-            for (int index = 0; index < systems.Count; index++) {
-                InteractiveObject system = systems[index];
-                if (system == null)
-                    continue;
-                int requiredLevel = GetRequiredInspectionSkillLevel(system);
-                if (requiredLevel < 2 || requiredLevel > skillLevel ||
-                    !UsesSharpEyeInspection(system))
-                    continue;
-                int examined;
-                int systemTotal;
-                GetSystemProgress(system, out examined, out systemTotal);
-                if (systemTotal <= 0)
-                    continue;
-                total++;
-                if (examined >= systemTotal)
-                    completed++;
-            }
-        }
-
         private static void ClearInspectionSystemsOverlay()
         {
             if (!inspectionSystemsOverlayActive &&
-                inspectionSystemsOverlayTargets.Count == 0 &&
                 inspectionSystemsOverlaySolidTargets.Count == 0 &&
                 inspectionSystemsOverlayHiddenRenderers.Count == 0 &&
-                inspectionSystemsOverlayHiddenColliders.Count == 0) {
-                if (inspectionSystemListVisible ||
-                    inspectionSystemListPanel != null)
-                    DestroyInspectionSystemList();
+                inspectionSystemsOverlayHiddenColliders.Count == 0)
                 return;
-            }
-            bool previousSuppression = suppressMouseOverObservation;
-            try {
-                suppressMouseOverObservation = true;
-                for (int index = 0;
-                    index < inspectionSystemsOverlayTargets.Count; index++) {
-                    InteractiveObject target =
-                        inspectionSystemsOverlayTargets[index];
-                    if (target == null)
+            ClearEmptySystemHighlight();
+            for (int index = 0;
+                index < inspectionSystemsOverlaySolidTargets.Count;
+                index++) {
+                PartScript part =
+                    inspectionSystemsOverlaySolidTargets[index];
+                if (part == null)
+                    continue;
+                try {
+                    part.SetMouseOver(false);
+                    InspectionOverlayPartState state;
+                    if (!inspectionSystemsOverlaySolidOriginalStates.
+                        TryGetValue(part.GetInstanceID(), out state))
                         continue;
-                    try {
-                        target.SetMouseOver(false);
-                    } catch {
-                    }
-                }
-                for (int index = 0;
-                    index < inspectionSystemsOverlaySolidTargets.Count;
-                    index++) {
-                    PartScript part =
-                        inspectionSystemsOverlaySolidTargets[index];
-                    if (part == null)
-                        continue;
-                    try {
-                        InspectionOverlayPartState state;
-                        if (!inspectionSystemsOverlaySolidOriginalStates.
-                            TryGetValue(part.GetInstanceID(), out state))
-                            continue;
-                        part.IsExamined = state.IsExamined;
-                        part.IsUnmounted = state.IsUnmounted;
-                        part.mountMode = state.MountMode;
-                        part.SwitchSolidColor(false);
-                        RestoreInspectionSystemsOverlaySolidColors(part);
-                        part.SetLayerRecursively(state.Layer);
-                        part.ReplaceShader(state.ReplacedShader);
+                    part.IsUnmounted = state.IsUnmounted;
+                    part.mountMode = state.MountMode;
+                    RestoreInspectionSystemsOverlaySolidColors(part);
+                    RestoreInspectionSystemsOverlayXrayColors(part);
+                    part.SetLayerRecursively(state.Layer);
+                    part.ReplaceShader(state.ReplacedShader);
+                    if (state.IsUnmounted) {
                         part.SetColor(state.Color);
                         part.Alpha0();
-                    } catch {
+                    } else {
+                        part.UpdateShaderParams(false);
+                        part.Alpha1();
                     }
+                } catch {
                 }
-                for (int index = 0;
-                    index < inspectionSystemsOverlayHiddenRenderers.Count;
-                    index++) {
-                    Renderer renderer =
-                        inspectionSystemsOverlayHiddenRenderers[index];
-                    if (renderer == null)
-                        continue;
-                    bool enabled;
-                    if (inspectionSystemsOverlayHiddenRendererStates.
-                        TryGetValue(renderer.GetInstanceID(), out enabled))
-                        renderer.enabled = enabled;
-                }
-                for (int index = 0;
-                    index < inspectionSystemsOverlayHiddenColliders.Count;
-                    index++) {
-                    Collider collider =
-                        inspectionSystemsOverlayHiddenColliders[index];
-                    if (collider == null)
-                        continue;
-                    bool enabled;
-                    if (inspectionSystemsOverlayHiddenColliderStates.
-                        TryGetValue(collider.GetInstanceID(), out enabled))
-                        collider.enabled = enabled;
-                }
-            } finally {
-                suppressMouseOverObservation = previousSuppression;
             }
-            inspectionSystemsOverlayTargets.Clear();
+            for (int index = 0;
+                index < inspectionSystemsOverlayHiddenRenderers.Count;
+                index++) {
+                Renderer renderer =
+                    inspectionSystemsOverlayHiddenRenderers[index];
+                if (renderer == null)
+                    continue;
+                bool enabled;
+                if (inspectionSystemsOverlayHiddenRendererStates.
+                    TryGetValue(renderer.GetInstanceID(), out enabled))
+                    renderer.enabled = enabled;
+            }
+            for (int index = 0;
+                index < inspectionSystemsOverlayHiddenColliders.Count;
+                index++) {
+                Collider collider =
+                    inspectionSystemsOverlayHiddenColliders[index];
+                if (collider == null)
+                    continue;
+                bool enabled;
+                if (inspectionSystemsOverlayHiddenColliderStates.
+                    TryGetValue(collider.GetInstanceID(), out enabled))
+                    collider.enabled = enabled;
+            }
+            ResetInspectionOverlayRaycastDiagnostics();
             inspectionSystemsOverlaySolidTargets.Clear();
+            inspectionSystemsOverlayPreviewPartsBySystem.Clear();
+            inspectionSystemsOverlaySystemByPartId.Clear();
+            inspectionOverlayPointerColliders.Clear();
+            inspectionOverlayPointerColliderIds.Clear();
+            inspectionSystemsOverlayMissingSlotByPartId.Clear();
+            inspectionSystemsOverlayMissingPartBySlot.Clear();
             inspectionSystemsOverlaySolidOriginalStates.Clear();
             inspectionSystemsOverlaySolidOriginalColors.Clear();
+            inspectionSystemsOverlayXrayOriginalColors.Clear();
+            inspectionSystemsOverlayMissingVisualDiagnosticStates.Clear();
             inspectionSystemsOverlayHiddenRenderers.Clear();
             inspectionSystemsOverlayHiddenRendererStates.Clear();
             inspectionSystemsOverlayHiddenColliders.Clear();
             inspectionSystemsOverlayHiddenColliderStates.Clear();
             inspectionSystemsOverlayLoader = null;
             inspectionSystemsOverlayActive = false;
-            DestroyInspectionSystemList();
-            indicatorDirty = true;
-            ClearSystemIndicator(true);
+            ClearBodyHighlight();
             LogDiagnostic("inspection systems overlay hide");
         }
 
-        private static void PrepareNativeInspection()
+        private static InteractiveObject
+            ResolveInspectionSystemsOverlayPartSystem(Transform hitTransform)
         {
-            capturedExamineSystem = null;
-            capturedExamineBody = null;
-            ClearBodyHighlight();
-            ClearSystemIndicator();
-            SetSharpEyeCursorFill(0f);
-        }
-
-        private static InteractiveObject ResolveBodyHoverTarget(
-            Raycast raycast, InteractiveObject raycastObject)
-        {
-            Transform hitTransform = GetRaycastHitTransform(raycast);
-            InteractiveObject hitObject = GetHitInteractiveObject(hitTransform);
-            if (hitObject != null) {
-                CarLoader hitLoader = GetCarLoader(hitObject);
-                if (IsBodyAggregateObject(hitLoader, hitObject))
-                    return hitObject;
-
-                InteractiveObject bodySurface;
-                if (TryGetBodySelectionHit(raycast, hitLoader,
-                        out bodySurface))
-                    return bodySurface;
+            if (hitTransform == null)
+                return null;
+            try {
+                PartScript part = hitTransform.GetComponentInParent<PartScript>();
+                if (part == null)
+                    return null;
+                InteractiveObject system;
+                return inspectionSystemsOverlaySystemByPartId.TryGetValue(
+                    part.GetInstanceID(), out system) ? system : null;
+            } catch {
                 return null;
             }
-
-            InteractiveObject observed = observedBodyMouseOverTarget;
-            bool observedFresh = observed != null &&
-                Time.frameCount - observedBodyMouseOverFrame <= 1;
-            if (observedFresh)
-                return observed;
-
-            if (Input.GetMouseButton(0) && bodyHighlightTarget != null)
-                return bodyHighlightTarget;
-
-            CarLoader hoveredLoader = GetHoveredCarLoader(raycast);
-            InteractiveObject bodyTarget;
-            return TryGetBodySelectionHit(raycast, hoveredLoader,
-                out bodyTarget) ? bodyTarget : null;
-        }
-
-        private static InteractiveObject ResolveSystemHoverTarget(
-            Raycast raycast, InteractiveObject raycastObject)
-        {
-            Transform hitTransform = GetRaycastHitTransform(raycast);
-            InteractiveObject hitObject = GetHitInteractiveObject(hitTransform);
-            if (hitObject != null) {
-                CarLoader hitLoader = GetCarLoader(hitObject);
-                if (!IsBodyAggregateObject(hitLoader, hitObject))
-                    return hitObject;
-                return null;
-            }
-
-            InteractiveObject observed = observedMouseOverTarget;
-            bool observedFresh = observed != null &&
-                Time.frameCount - observedMouseOverFrame <= 1;
-            if (!observedFresh || IsWholeCarBodyObject(observed))
-                return null;
-
-            CarLoader observedLoader = GetCarLoader(observed);
-            if (IsBodyAggregateObject(observedLoader, observed))
-                return null;
-            return observed;
         }
 
         private static Transform GetRaycastHitTransform(Raycast raycast)
         {
+            if (inspectionSystemsOverlayActive)
+                return inspectionOverlayPointerHitFrame == Time.frameCount ?
+                    inspectionOverlayPointerHitTransform : null;
             try {
                 return raycast != null ? raycast.hit.transform : null;
             } catch {
                 return null;
             }
+        }
+
+        private static Transform GetInspectionOverlayPointerHitTransform(
+            Vector3 mousePosition)
+        {
+            if (!inspectionSystemsOverlayActive)
+                return null;
+            if (inspectionOverlayPointerHitFrame == Time.frameCount)
+                return inspectionOverlayPointerHitTransform;
+            inspectionOverlayPointerHitFrame = Time.frameCount;
+            inspectionOverlayPointerHitTransform = null;
+            inspectionOverlayPointerHitUsedBoundsFallback = false;
+
+            Camera camera = bodySelectionCamera;
+            if (camera == null) {
+                camera = Camera.main;
+                bodySelectionCamera = camera;
+            }
+            if (camera == null)
+                return null;
+
+            try {
+                Ray ray = camera.ScreenPointToRay(mousePosition);
+                float nearest = float.MaxValue;
+                for (int index = 0; index <
+                    inspectionOverlayPointerColliders.Count; index++) {
+                    Collider collider = inspectionOverlayPointerColliders[index];
+                    if (!IsInspectionOverlayPointerColliderCandidate(collider))
+                        continue;
+                    RaycastHit hit;
+                    if (!collider.Raycast(ray, out hit,
+                            InspectionPointerRayDistance) ||
+                        hit.distance >= nearest)
+                        continue;
+                    nearest = hit.distance;
+                    inspectionOverlayPointerHitTransform = collider.transform;
+                }
+
+                if (inspectionOverlayPointerHitTransform == null) {
+                    nearest = float.MaxValue;
+                    for (int index = 0; index <
+                        inspectionOverlayPointerColliders.Count; index++) {
+                        Collider collider =
+                            inspectionOverlayPointerColliders[index];
+                        if (!IsInspectionOverlayPointerColliderCandidate(
+                                collider))
+                            continue;
+                        float distance;
+                        Bounds bounds = collider.bounds;
+                        if (!bounds.IntersectRay(ray, out distance) ||
+                            distance < 0f ||
+                            distance > InspectionPointerRayDistance ||
+                            distance >= nearest)
+                            continue;
+                        nearest = distance;
+                        inspectionOverlayPointerHitTransform =
+                            collider.transform;
+                    }
+                    inspectionOverlayPointerHitUsedBoundsFallback =
+                        inspectionOverlayPointerHitTransform != null;
+                }
+            } catch {
+                inspectionOverlayPointerHitTransform = null;
+                inspectionOverlayPointerHitUsedBoundsFallback = false;
+            }
+            return inspectionOverlayPointerHitTransform;
+        }
+
+        private static bool IsInspectionOverlayPointerColliderCandidate(
+            Collider collider)
+        {
+            return collider != null && collider.enabled &&
+                collider.gameObject != null &&
+                collider.gameObject.activeInHierarchy;
         }
 
         private static InteractiveObject GetHitInteractiveObject(
@@ -1495,105 +1915,7 @@ namespace Cms21GameplayPlus
 
         internal static void HandleExamineGarageRaycast(Raycast raycast)
         {
-            if (!GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive()) {
-                capturedExamineBody = null;
-                ClearInspectionSystemsOverlay();
-                HideInspectionFooterForModeExit();
-                HideInspectionResetHints();
-                ClearBodyHighlight();
-                ClearSystemIndicator();
-                return;
-            }
-
-            CaptureInspectionResetHintSource();
-            EnsureInspectionResetHintSource();
-            ShowInspectionSystemsHint();
-            LayoutInspectionResetHints();
-            UpdateInspectionSystemListUi(raycast);
-            if (inspectionSystemsOverlayActive) {
-                capturedExamineBody = null;
-                capturedExamineSystem = null;
-                HideInspectionExamineHint();
-                UpdateInspectionResetHints(inspectionSystemsOverlayLoader,
-                    null, false);
-                ShowInspectionSystemsHint();
-                LayoutInspectionResetHints();
-                return;
-            }
-            InteractiveObject bodyObject = capturedExamineBody;
-            capturedExamineBody = null;
-            if (bodyObject != null) {
-                ClearEmptySystemHighlight();
-                CarLoader bodyLoader = GetCarLoader(bodyObject);
-                if (bodyLoader == null)
-                    bodyLoader = GetHoveredCarLoader(raycast);
-                if (bodyLoader != null) {
-                    DumpInspectionSystems(bodyLoader);
-                    ShowBodyHover(bodyLoader, bodyObject);
-                    UpdateInspectionResetHints(bodyLoader, bodyObject, true);
-                    UpdateBodyHold(bodyLoader);
-                    return;
-                }
-                HideInspectionActionHints();
-            }
-            ClearBodyHighlight();
-
-            InteractiveObject interactiveObject = ResolveSystemHoverTarget(
-                raycast, raycast != null ? raycast.iO : null);
-            capturedExamineSystem = null;
-            if (interactiveObject == null ||
-                IsWholeCarBodyObject(interactiveObject)) {
-                CarLoader hoverLoader = GetHoveredCarLoader(raycast);
-                if (hoverLoader == null)
-                    hoverLoader = inspectionResetLoader;
-                UpdateInspectionResetHints(hoverLoader, null, false);
-                ClearEmptySystemHighlight();
-                ClearSystemIndicator();
-                return;
-            }
-            if (!UsesSharpEyeInspection(interactiveObject)) {
-                CarLoader nativeLoader = GetCarLoader(interactiveObject);
-                if (nativeLoader == null)
-                    nativeLoader = GetHoveredCarLoader(raycast);
-                UpdateInspectionResetHints(nativeLoader, null, false);
-                return;
-            }
-            UpdateEmptySystemHighlight(interactiveObject);
-
-            CarLoader loader = GetCarLoader(interactiveObject);
-            if (loader == null)
-                loader = GetHoveredCarLoader(raycast);
-            if (loader == null) {
-                HideInspectionActionHints();
-                ClearSystemIndicator();
-                return;
-            }
-
-            DumpInspectionSystems(loader);
-            CacheHoveredSystemPart(raycast, interactiveObject, loader);
-            int examined;
-            int total;
-            GetSystemProgress(interactiveObject, out examined, out total);
-            if (total <= 0) {
-                HideInspectionActionHints();
-                ClearSystemIndicator();
-                return;
-            }
-            UpdateInspectionResetHints(loader, interactiveObject, false);
-            if (examined >= total)
-                HideCompletedNativeExamineHint(interactiveObject);
-
-            SystemPassState state = GetSystemPassState(interactiveObject);
-            if (state != null && state.CustomContinuationActive)
-                EnsureCustomContinuation(interactiveObject, state);
-            if (state != null) {
-                UpdateCarrierVisualHold(state);
-                UpdateManualCustomHold(interactiveObject, state);
-                UpdateNativeVisualHold(interactiveObject, state);
-            }
-            UpdateSystemIndicator(interactiveObject);
-            GetSystemProgress(interactiveObject, out examined, out total);
+            NativeInspectionModeReplacement.Tick(raycast);
         }
 
         private static List<InteractiveObject> GetInspectionSystems(
@@ -1622,17 +1944,19 @@ namespace Cms21GameplayPlus
                         UnityEngine.Object raw = all[index];
                         InteractiveObject candidate = raw != null ?
                             raw.TryCast<InteractiveObject>() : null;
-                        if (candidate == null ||
-                            GetRequiredInspectionSkillLevel(candidate) <= 1)
+                        if (candidate == null)
                             continue;
                         CarLoader candidateLoader = GetCarLoader(candidate);
                         if (candidateLoader == null)
                             continue;
                         try {
-                            if (candidateLoader.GetInstanceID() == loaderId)
-                                cached.Add(candidate);
+                            if (candidateLoader.GetInstanceID() != loaderId)
+                                continue;
                         } catch {
+                            continue;
                         }
+                        if (GetRequiredInspectionSkillLevel(candidate) > 1)
+                            cached.Add(candidate);
                     }
                 }
             } catch {
@@ -1693,143 +2017,6 @@ namespace Cms21GameplayPlus
             return 900;
         }
 
-        private static void DumpInspectionSystems(CarLoader loader)
-        {
-            if (loader == null)
-                return;
-
-            int loaderId;
-            try {
-                loaderId = loader.GetInstanceID();
-            } catch {
-                return;
-            }
-            if (!DumpedInspectionLoaderIds.Add(loaderId))
-                return;
-
-            try {
-                UnhollowerBaseLib.Il2CppReferenceArray<UnityEngine.Object> allSystems =
-                    Resources.FindObjectsOfTypeAll(
-                        UnhollowerRuntimeLib.Il2CppType.Of<InteractiveObject>());
-                List<InteractiveObject> systems =
-                    new List<InteractiveObject>();
-                int targetLoaderId = loader.GetInstanceID();
-                if (allSystems != null) {
-                    for (int index = 0; index < allSystems.Length; index++) {
-                        UnityEngine.Object rawCandidate = allSystems[index];
-                        InteractiveObject candidate = rawCandidate != null ?
-                            rawCandidate.TryCast<InteractiveObject>() : null;
-                        if (candidate == null)
-                            continue;
-                        CarLoader candidateLoader = GetCarLoader(candidate);
-                        if (candidateLoader == null)
-                            continue;
-                        try {
-                            if (candidateLoader.GetInstanceID() ==
-                                targetLoaderId)
-                                systems.Add(candidate);
-                        } catch {
-                        }
-                    }
-                }
-
-                systems.Sort(delegate(InteractiveObject left,
-                    InteractiveObject right) {
-                    return string.Compare(SafeIoId(left), SafeIoId(right),
-                        StringComparison.OrdinalIgnoreCase);
-                });
-                if (!InspectionSystemsCache.ContainsKey(loaderId)) {
-                    List<InteractiveObject> inspectionSystems =
-                        new List<InteractiveObject>();
-                    for (int index = 0; index < systems.Count; index++) {
-                        InteractiveObject candidate = systems[index];
-                        if (candidate != null &&
-                            GetRequiredInspectionSkillLevel(candidate) > 1)
-                            inspectionSystems.Add(candidate);
-                    }
-                    inspectionSystems.Sort(CompareInspectionSystems);
-                    InspectionSystemsCache[loaderId] = inspectionSystems;
-                }
-
-                LogDiagnostic("inspection systems begin car=" +
-                    SafeLoaderName(loader) + " count=" +
-                    systems.Count.ToString(CultureInfo.InvariantCulture));
-                for (int index = 0; index < systems.Count; index++) {
-                    InteractiveObject system = systems[index];
-                    if (system == null)
-                        continue;
-                    int nativeTotal = GetRawNativeSystemPartCount(system);
-                    int nativeExamined =
-                        GetRawNativeSystemExaminedCount(system);
-                    bool active = false;
-                    try {
-                        active = system.gameObject != null &&
-                            system.gameObject.activeInHierarchy;
-                    } catch {
-                    }
-                    bool body = IsWholeCarBodyObject(system);
-                    LogDiagnostic("inspection system io=" + SafeIoId(system) +
-                        " native=" +
-                        nativeExamined.ToString(CultureInfo.InvariantCulture) +
-                        "/" +
-                        nativeTotal.ToString(CultureInfo.InvariantCulture) +
-                        " active=" + active.ToString() + " body=" +
-                        body.ToString());
-                    if (body)
-                        LogBodyInteractionSurface(system);
-                }
-                LogDiagnostic("inspection systems end car=" +
-                    SafeLoaderName(loader));
-            } catch (Exception exception) {
-                LogDiagnostic("inspection systems failed car=" +
-                    SafeLoaderName(loader) + " exception=" +
-                    exception.GetType().Name);
-            }
-        }
-
-        private static void LogBodyInteractionSurface(
-            InteractiveObject body)
-        {
-            if (body == null)
-                return;
-            try {
-                int colliderCount = 0;
-                int rendererCount = 0;
-                int enabledColliders = 0;
-                int enabledRenderers = 0;
-                foreach (Collider collider in
-                    body.GetComponentsInChildren<Collider>(true)) {
-                    if (collider == null)
-                        continue;
-                    colliderCount++;
-                    if (collider.enabled)
-                        enabledColliders++;
-                }
-                foreach (Renderer renderer in
-                    body.GetComponentsInChildren<Renderer>(true)) {
-                    if (renderer == null)
-                        continue;
-                    rendererCount++;
-                    if (renderer.enabled)
-                        enabledRenderers++;
-                }
-                LogDiagnostic("body interaction io=" + SafeIoId(body) +
-                    " layer=" + body.gameObject.layer.ToString(
-                        CultureInfo.InvariantCulture) +
-                    " colliders=" +
-                        colliderCount.ToString(CultureInfo.InvariantCulture) +
-                    " enabledColliders=" +
-                        enabledColliders.ToString(CultureInfo.InvariantCulture) +
-                    " renderers=" +
-                        rendererCount.ToString(CultureInfo.InvariantCulture) +
-                    " enabledRenderers=" +
-                        enabledRenderers.ToString(CultureInfo.InvariantCulture));
-            } catch (Exception exception) {
-                LogDiagnostic("body interaction failed io=" + SafeIoId(body) +
-                    " exception=" + exception.GetType().Name);
-            }
-        }
-
         private static string SafeLoaderName(CarLoader loader)
         {
             if (loader == null)
@@ -1844,158 +2031,273 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static void LogExamineHoverProbe(Raycast raycast,
-            InteractiveObject current)
+        private static void ResetInspectionOverlayRaycastDiagnostics()
         {
+            inspectionOverlayRaycastSystemId = int.MinValue;
+            inspectionOverlayRaycastBodyId = int.MinValue;
+            inspectionOverlayRaycastCurrentId = int.MinValue;
+            inspectionOverlayPointerHitFrame = -1;
+            inspectionOverlayPointerHitTransform = null;
+            inspectionOverlayPointerHitUsedBoundsFallback = false;
+        }
+
+        private static int SafeInstanceId(UnityEngine.Object value)
+        {
+            if (value == null)
+                return 0;
             try {
-                InteractiveObject gameHover = null;
+                return value.GetInstanceID();
+            } catch {
+                return -1;
+            }
+        }
+
+        private static string GetDiagnosticTransformPath(Transform value,
+            int maximumDepth)
+        {
+            if (value == null)
+                return "<null>";
+            string path = string.Empty;
+            Transform current = value;
+            int depth = 0;
+            while (current != null && depth < maximumDepth) {
+                path = path.Length == 0 ? current.name :
+                    current.name + "/" + path;
+                current = current.parent;
+                depth++;
+            }
+            return path;
+        }
+
+        private static void LogInspectionOverlayRaycastProbe(Raycast raycast,
+            InteractiveObject raycastObject, InteractiveObject resolvedSystem,
+            InteractiveObject resolvedBody, InteractiveObject current)
+        {
+            if (!inspectionSystemsOverlayActive)
+                return;
+            try {
+                Transform hit = GetRaycastHitTransform(raycast);
+                int systemId = SafeInstanceId(resolvedSystem);
+                int bodyId = SafeInstanceId(resolvedBody);
+                int currentId = SafeInstanceId(current);
+                if (inspectionOverlayRaycastSystemId == systemId &&
+                    inspectionOverlayRaycastBodyId == bodyId &&
+                    inspectionOverlayRaycastCurrentId == currentId)
+                    return;
+                inspectionOverlayRaycastSystemId = systemId;
+                inspectionOverlayRaycastBodyId = bodyId;
+                inspectionOverlayRaycastCurrentId = currentId;
+
+                PartScript part = hit != null ?
+                    hit.GetComponentInParent<PartScript>() : null;
+                InteractiveObject mappedSystem =
+                    ResolveInspectionSystemsOverlayPartSystem(hit);
+                int partId = SafeInstanceId(part);
+                Collider collider = hit != null ? hit.GetComponent<Collider>() :
+                    null;
+                if (collider == null && hit != null)
+                    collider = hit.GetComponentInParent<Collider>();
                 GameScript game = GameScript.Get();
-                if (game != null)
-                    gameHover = game.IOMouseOverIO;
-
-                Transform hitTransform = null;
-                try {
-                    if (raycast != null)
-                        hitTransform = raycast.hit.transform;
-                } catch {
-                }
-
-                string hitName = hitTransform != null ?
-                    hitTransform.name : "<null>";
-                string hierarchy = string.Empty;
-                Transform cursor = hitTransform;
-                int depth = 0;
-                while (cursor != null && depth < 12) {
-                    InteractiveObject io = null;
-                    try {
-                        io = cursor.GetComponent<InteractiveObject>();
-                    } catch {
-                    }
-                    if (io != null) {
-                        if (hierarchy.Length > 0)
-                            hierarchy += ">";
-                        hierarchy += cursor.name + ":" + SafeIoId(io);
-                    }
-                    cursor = cursor.parent;
-                    depth++;
-                }
-                if (hierarchy.Length == 0)
-                    hierarchy = "<none>";
-
-                LogDiagnostic("examine hover probe current=" +
-                    SafeIoId(current) + " gameHover=" +
-                    SafeIoId(gameHover) + " hit=" + hitName +
-                    " ioHierarchy=" + hierarchy);
+                InteractiveObject gameHover = game != null ?
+                    game.IOMouseOverIO : null;
+                int missingSlot = -1;
+                bool mappedMissing = part != null &&
+                    inspectionSystemsOverlayMissingSlotByPartId.TryGetValue(
+                        partId, out missingSlot);
+                int available = -1;
+                int examined = -1;
+                int full = -1;
+                if (resolvedSystem != null)
+                    GetSystemAvailableProgress(resolvedSystem,
+                        GetInspectionSkillLevel(), out examined, out available,
+                        out full);
+                LogDiagnostic("inspection overlay raycast hit=" +
+                    GetDiagnosticTransformPath(hit, 8) + " hitMode=" +
+                    (hit != null ?
+                        (inspectionOverlayPointerHitUsedBoundsFallback ?
+                            "bounds" : "collider") : "null") +
+                    " hitLayer=" +
+                    (hit != null ? hit.gameObject.layer.ToString(
+                        CultureInfo.InvariantCulture) : "-") + " collider=" +
+                    (collider != null ? collider.name : "<null>") +
+                    " colliderEnabled=" +
+                    (collider != null ? collider.enabled.ToString() : "-") +
+                    " part=" + (part != null ? SafePartId(part) :
+                        "<none>") + " partUnmounted=" +
+                    (part != null ? part.IsUnmounted.ToString() : "-") +
+                    " partLayer=" +
+                    (part != null && part.gameObject != null ?
+                        part.gameObject.layer.ToString(
+                            CultureInfo.InvariantCulture) : "-") +
+                    " missingSlot=" +
+                    (mappedMissing ? missingSlot.ToString(
+                        CultureInfo.InvariantCulture) : "-") +
+                    " mapped=" + SafeIoId(mappedSystem) + " hitIo=" +
+                    SafeIoId(GetHitInteractiveObject(hit)) + " raycastIo=" +
+                    SafeIoId(raycastObject) + " gameHover=" +
+                    SafeIoId(gameHover) + " resolvedSystem=" +
+                    SafeIoId(resolvedSystem) + " resolvedBody=" +
+                    SafeIoId(resolvedBody) + " current=" + SafeIoId(current) +
+                    " progress=" + examined.ToString(
+                        CultureInfo.InvariantCulture) + "/" +
+                    available.ToString(CultureInfo.InvariantCulture) +
+                    " full=" + full.ToString(CultureInfo.InvariantCulture));
             } catch (Exception exception) {
-                LogDiagnostic("examine hover probe failed exception=" +
+                LogDiagnostic("inspection overlay raycast failed exception=" +
+                    exception.GetType().Name);
+            }
+        }
+
+        private static void LogInspectionOverlaySystemProbe(
+            InteractiveObject system, int skillLevel, int examined,
+            int available, int full, bool hasAvailableMountedPart,
+            int visibleMissingParts)
+        {
+            if (system == null)
+                return;
+            try {
+                List<PartScript> mappedParts;
+                int systemId = system.GetInstanceID();
+                inspectionSystemsOverlayPreviewPartsBySystem.TryGetValue(
+                    systemId, out mappedParts);
+                int mapped = mappedParts != null ? mappedParts.Count : 0;
+                int mounted = 0;
+                int missing = 0;
+                int enabledColliders = 0;
+                int layer16 = 0;
+                int layer28 = 0;
+                if (mappedParts != null) {
+                    for (int index = 0; index < mappedParts.Count; index++) {
+                        PartScript part = mappedParts[index];
+                        if (part == null)
+                            continue;
+                        if (IsInspectionSystemsOverlayMissingPart(part))
+                            missing++;
+                        else
+                            mounted++;
+                        if (part.gameObject != null) {
+                            if (part.gameObject.layer == InspectionPreviewPartLayer)
+                                layer16++;
+                            if (part.gameObject.layer == InspectionMountedPartLayer)
+                                layer28++;
+                        }
+                        Collider[] colliders =
+                            part.GetComponentsInChildren<Collider>(true);
+                        for (int colliderIndex = 0;
+                            colliderIndex < colliders.Length; colliderIndex++) {
+                            Collider collider = colliders[colliderIndex];
+                            if (collider != null && collider.enabled)
+                                enabledColliders++;
+                        }
+                    }
+                }
+                LogDiagnostic("inspection overlay system system=" +
+                    SafeIoId(system) + " skill=" + skillLevel.ToString(
+                        CultureInfo.InvariantCulture) + " progress=" +
+                    examined.ToString(CultureInfo.InvariantCulture) + "/" +
+                    available.ToString(CultureInfo.InvariantCulture) +
+                    " full=" + full.ToString(CultureInfo.InvariantCulture) +
+                    " mapped=" + mapped.ToString(
+                        CultureInfo.InvariantCulture) + " mounted=" +
+                    mounted.ToString(CultureInfo.InvariantCulture) +
+                    " missing=" + missing.ToString(
+                        CultureInfo.InvariantCulture) + " visibleMissing=" +
+                    visibleMissingParts.ToString(
+                        CultureInfo.InvariantCulture) + " mountedAvailable=" +
+                    hasAvailableMountedPart.ToString() +
+                    " enabledColliders=" + enabledColliders.ToString(
+                        CultureInfo.InvariantCulture) + " layer16=" +
+                    layer16.ToString(CultureInfo.InvariantCulture) +
+                    " layer28=" + layer28.ToString(
+                        CultureInfo.InvariantCulture));
+            } catch (Exception exception) {
+                LogDiagnostic("inspection overlay system probe failed system=" +
+                    SafeIoId(system) + " exception=" +
                     exception.GetType().Name);
             }
         }
 
         private static void UpdateEmptySystemHighlight(
-            InteractiveObject system)
+            InteractiveObject system, bool completed)
         {
             if (system == null || IsWholeCarBodyObject(system)) {
                 ClearEmptySystemHighlight();
                 return;
             }
 
-            int examined;
-            int total;
-            GetSystemProgress(system, out examined, out total);
-            if (total <= 0) {
-                ClearEmptySystemHighlight();
-                return;
-            }
-            SystemPassState state = GetSystemPassState(system);
-            bool hasMountedParts = state != null && state.HasMountedParts;
-
-            bool changed = emptySystemHighlightTarget == null ||
+            bool targetChanged = emptySystemHighlightTarget == null ||
                 emptySystemHighlightTarget.GetInstanceID() !=
                     system.GetInstanceID();
-            if (changed)
+            bool highlightChanged = targetChanged ||
+                emptySystemHighlightCompleted != completed;
+            if (targetChanged)
                 ClearEmptySystemHighlight();
             emptySystemHighlightTarget = system;
-            try {
-                CacheCurrentSystemName(system);
-                system.SetMouseOver(true, examined >= total ? Color.green :
-                    Color.yellow);
-                if (!hasMountedParts) {
-                    SetEmptySystemMouseOverLabel(system);
-                    if (changed) {
-                        LogDiagnostic("empty system outline force system=" +
-                            SafeIoId(system) + " total=" +
-                            total.ToString(CultureInfo.InvariantCulture));
-                    }
+            emptySystemHighlightCompleted = completed;
+            if (highlightChanged && inspectionSystemsOverlayActive) {
+                try {
+                    system.SetMouseOver(true, completed ? Color.green :
+                        Color.yellow);
+                } catch {
                 }
-            } catch (Exception exception) {
-                if (changed)
-                    LogDiagnostic("empty system outline failed system=" +
-                        SafeIoId(system) + " exception=" +
-                        exception.GetType().Name);
+                SetInspectionSystemsOverlayPreviewHover(system, true,
+                    completed);
+            }
+
+            if (targetChanged && inspectionSystemsOverlayActive) {
+                int systemId = system.GetInstanceID();
+                List<PartScript> visibleParts;
+                int visiblePartCount =
+                    inspectionSystemsOverlayPreviewPartsBySystem.TryGetValue(
+                        systemId, out visibleParts) &&
+                    visibleParts != null ? visibleParts.Count : 0;
+                LogDiagnostic("inspection overlay hover system=" +
+                    SafeIoId(system) + " parts=" +
+                    visiblePartCount.ToString(CultureInfo.InvariantCulture) +
+                    " complete=" + completed.ToString());
             }
         }
 
-        private static void CacheCurrentSystemName(
-            InteractiveObject system)
+        private static void ClearMouseOverDescription(
+            InteractiveObject system = null, bool force = false)
         {
-            if (system == null)
+            if (!force && string.IsNullOrEmpty(mouseOverDescriptionText))
                 return;
             try {
-                GameScript game = GameScript.Get();
-                InteractiveObject current = game != null ?
-                    game.IOMouseOverIO : null;
-                if (current == null || current.GetInstanceID() !=
-                    system.GetInstanceID())
-                    return;
-
+                if (system != null) {
+                    GameScript game = GameScript.Get();
+                    InteractiveObject current = game != null ?
+                        game.IOMouseOverIO : null;
+                    if (current == null || current.GetInstanceID() !=
+                        system.GetInstanceID())
+                        return;
+                }
                 UIManager ui = UIManager.Get();
-                string value = ToText(ReadMember(
-                    ReadMember(ui, "TextDescription"), "text"));
-                if (!IsUserFacingSystemName(value) ||
-                    LooksLikeTechnicalSystemName(system, value))
-                    return;
-                SystemNameCache[system.GetInstanceID()] = value;
-            } catch {
-            }
-        }
-
-        private static void SetEmptySystemMouseOverLabel(
-            InteractiveObject system)
-        {
-            if (system == null)
-                return;
-            try {
-                GameScript game = GameScript.Get();
-                if (game == null)
-                    return;
-
-                string displayName = GetLocalizedSystemName(system);
-                if (!string.IsNullOrEmpty(displayName)) {
-                    try {
-                        suppressMouseOverObservation = true;
-                        game.SetIOMouseOver(system.gameObject, displayName,
-                            system);
-                    } finally {
-                        suppressMouseOverObservation = false;
-                    }
-                    SetMouseOverDescription(displayName);
-                }
+                UnityEngine.UI.Text text = ui != null ?
+                    ReadMember(ui, "TextDescription") as UnityEngine.UI.Text :
+                    null;
+                if (text != null && text.text.Length != 0)
+                    text.text = string.Empty;
+                mouseOverDescriptionText = null;
             } catch {
             }
         }
 
         private static void SetMouseOverDescription(string displayName)
         {
-            if (string.IsNullOrEmpty(displayName))
+            if (string.IsNullOrEmpty(displayName) ||
+                string.Equals(mouseOverDescriptionText, displayName,
+                    StringComparison.Ordinal))
                 return;
             try {
                 UIManager ui = UIManager.Get();
                 UnityEngine.UI.Text text = ui != null ?
                     ReadMember(ui, "TextDescription") as UnityEngine.UI.Text :
                     null;
-                if (text != null)
+                if (text != null && !string.Equals(text.text, displayName,
+                        StringComparison.Ordinal))
                     text.text = displayName;
+                mouseOverDescriptionText = displayName;
             } catch {
             }
         }
@@ -2004,141 +2306,126 @@ namespace Cms21GameplayPlus
         {
             if (emptySystemHighlightTarget == null)
                 return;
+            InteractiveObject target = emptySystemHighlightTarget;
+            emptySystemHighlightTarget = null;
+            emptySystemHighlightCompleted = false;
             try {
-                emptySystemHighlightTarget.SetMouseOver(false);
+                target.SetMouseOver(false);
             } catch {
             }
-            emptySystemHighlightTarget = null;
+            if (inspectionSystemsOverlayActive)
+                SetInspectionSystemsOverlayPreviewHover(target, false);
         }
 
-        private static void ShowBodyHover(CarLoader loader,
-            InteractiveObject bodyObject)
+        private static void ShowBodyBaseHighlight(CarLoader loader)
         {
-            if (loader == null || bodyObject == null)
+            if (loader == null || !inspectionSystemsOverlayActive)
                 return;
-
-            string displayName = GetCarDisplayName(loader);
-            BodyPassState bodyState = GetBodyPassState(loader);
-            bool bodyComplete = bodyState != null && bodyState.Total > 0 &&
-                bodyState.ExaminedSlots.Count >= bodyState.Total;
-
-            int loaderId = loader.GetInstanceID();
-            bool changed = bodyHighlightLoaderId != loaderId;
-            if (changed)
-                ClearBodyHighlight();
-            bodyHighlightTarget = bodyObject;
-            if (changed || activeBodyHighlightTargets.Count == 0) {
-                List<InteractiveObject> targets =
-                    GetBodyHighlightTargets(loader);
-                bool previousObservationSuppression =
-                    suppressMouseOverObservation;
-                try {
-                    suppressMouseOverObservation = true;
-                    for (int index = 0; index < targets.Count; index++) {
-                        InteractiveObject target = targets[index];
-                        if (target == null)
-                            continue;
-                        try {
-                            target.SetMouseOver(true, bodyComplete ?
-                                Color.green : Color.yellow);
-                            activeBodyHighlightTargets.Add(target);
-                        } catch {
-                        }
-                    }
-                } finally {
-                    suppressMouseOverObservation =
-                        previousObservationSuppression;
-                }
-                bodyHighlightLoaderId = loaderId;
-            }
-            SetMouseOverDescription(!string.IsNullOrEmpty(displayName) ?
-                displayName : GetBodyDisplayName());
-            if (changed)
-                LogDiagnostic("body hover active io=" + SafeIoId(bodyObject));
-            UpdateBodyIndicator(loader, bodyObject);
-        }
-
-        private static void ClearBodyHighlight()
-        {
-            bool previousObservationSuppression =
-                suppressMouseOverObservation;
-            try {
-                suppressMouseOverObservation = true;
-                for (int index = 0; index < activeBodyHighlightTargets.Count;
-                    index++) {
-                    InteractiveObject target = activeBodyHighlightTargets[index];
-                    if (target == null)
-                        continue;
-                    try {
-                        target.SetMouseOver(false);
-                    } catch {
-                    }
-                }
-            } finally {
-                suppressMouseOverObservation =
-                    previousObservationSuppression;
-            }
-            activeBodyHighlightTargets.Clear();
-            bodyHighlightLoaderId = -1;
-            bodyHighlightTarget = null;
-        }
-
-        private static string GetCarDisplayName(CarLoader loader)
-        {
-            if (loader == null)
-                return string.Empty;
 
             int loaderId;
             try {
                 loaderId = loader.GetInstanceID();
             } catch {
-                return string.Empty;
+                return;
             }
-            string cached;
-            if (CarDisplayNameCache.TryGetValue(loaderId, out cached))
-                return cached;
+            if (bodyHighlightBaseActive && bodyHighlightLoaderId == loaderId &&
+                activeBodyHighlightTargets.Count > 0)
+                return;
 
-            string carId = ToText(ReadMember(loader, "carToLoad"));
+            if (bodyHighlightLoaderId != loaderId)
+                ClearBodyHighlight();
+            List<InteractiveObject> targets = GetBodyHighlightTargets(loader);
+            activeBodyHighlightTargets.Clear();
+            for (int index = 0; index < targets.Count; index++) {
+                InteractiveObject target = targets[index];
+                if (target == null)
+                    continue;
+                try {
+                    target.SetMouseOver(true, Color.white);
+                    activeBodyHighlightTargets.Add(target);
+                } catch {
+                }
+            }
+            bodyHighlightLoaderId = loaderId;
+            bodyHighlightBaseActive = activeBodyHighlightTargets.Count > 0;
+            bodyHighlightCompleted = false;
+            bodyHighlightTarget = null;
+        }
+
+        private static void RestoreBodyBaseHighlight()
+        {
+            if (!inspectionSystemsOverlayActive ||
+                inspectionSystemsOverlayLoader == null) {
+                ClearBodyHighlight();
+                return;
+            }
+            if (bodyHighlightBaseActive && bodyHighlightTarget == null)
+                return;
+            ShowBodyBaseHighlight(inspectionSystemsOverlayLoader);
+        }
+
+        private static void ShowBodyHover(CarLoader loader,
+            InteractiveObject bodyObject, bool bodyComplete)
+        {
+            if (loader == null || bodyObject == null)
+                return;
+
+            int loaderId;
             try {
-                GameManager manager = GlobalState.GameManager;
-                if (manager == null)
-                    manager = Singleton<GameManager>.Instance;
-                if (manager != null && manager.CarBundleLoader != null &&
-                    !string.IsNullOrEmpty(carId)) {
-                    foreach (CarConfigData car in
-                        manager.CarBundleLoader.CarNamesData) {
-                        if (car == null || !string.Equals(car.CarID, carId,
-                                StringComparison.OrdinalIgnoreCase))
-                            continue;
-                        if (!string.IsNullOrEmpty(car.CarName)) {
-                            CarDisplayNameCache[loaderId] = car.CarName;
-                            return car.CarName;
-                        }
-                        break;
-                    }
-                }
+                loaderId = loader.GetInstanceID();
             } catch {
+                return;
             }
+            if (bodyHighlightLoaderId != loaderId ||
+                activeBodyHighlightTargets.Count == 0)
+                ShowBodyBaseHighlight(loader);
 
-            string name = ToText(ReadMember(loader, "CarName"));
-            if (string.IsNullOrEmpty(name))
-                name = ToText(ReadMember(loader, "carName"));
-            if (string.IsNullOrEmpty(name)) {
+            bool highlightChanged = bodyHighlightTarget == null ||
+                bodyHighlightTarget.GetInstanceID() != bodyObject.GetInstanceID() ||
+                bodyHighlightCompleted != bodyComplete ||
+                bodyHighlightBaseActive;
+            bodyHighlightTarget = bodyObject;
+            if (!highlightChanged)
+                return;
+
+            for (int index = 0; index < activeBodyHighlightTargets.Count;
+                index++) {
+                InteractiveObject target = activeBodyHighlightTargets[index];
+                if (target == null)
+                    continue;
                 try {
-                    name = loader.GetName();
+                    target.SetMouseOver(true, bodyComplete ? Color.green :
+                        Color.yellow);
                 } catch {
                 }
             }
-            if (string.IsNullOrEmpty(name)) {
+            bodyHighlightLoaderId = loaderId;
+            bodyHighlightCompleted = bodyComplete;
+            bodyHighlightBaseActive = false;
+            LogDiagnostic("body hover active io=" + SafeIoId(bodyObject));
+        }
+
+        private static void ClearBodyHighlight()
+        {
+            if (bodyHighlightTarget == null && bodyHighlightLoaderId < 0 &&
+                activeBodyHighlightTargets.Count == 0 &&
+                !bodyHighlightBaseActive)
+                return;
+            for (int index = 0; index < activeBodyHighlightTargets.Count;
+                index++) {
+                InteractiveObject target = activeBodyHighlightTargets[index];
+                if (target == null)
+                    continue;
                 try {
-                    name = loader.CarBrand;
+                    target.SetMouseOver(false);
                 } catch {
                 }
             }
-            if (string.IsNullOrEmpty(name))
-                name = carId ?? string.Empty;
-            CarDisplayNameCache[loaderId] = name;
-            return name;
+            activeBodyHighlightTargets.Clear();
+            bodyHighlightLoaderId = -1;
+            bodyHighlightCompleted = false;
+            bodyHighlightBaseActive = false;
+            bodyHighlightTarget = null;
         }
 
         private static List<BodyPartSlot> GetBodyParts(CarLoader loader)
@@ -2418,7 +2705,8 @@ namespace Cms21GameplayPlus
         }
 
         private static bool TryGetBodySelectionHit(Raycast raycast,
-            CarLoader loader, out InteractiveObject bodyTarget)
+            CarLoader loader, Vector3 mousePosition,
+            out InteractiveObject bodyTarget)
         {
             bodyTarget = null;
             if (raycast == null || loader == null)
@@ -2435,21 +2723,30 @@ namespace Cms21GameplayPlus
             Vector3 origin = camera.transform.position;
             Vector3 direction = camera.transform.forward;
             float mechanicalDistance = float.MaxValue;
-            try {
-                if (raycast.hit.transform != null) {
-                    Vector3 delta = raycast.hit.point - origin;
-                    if (delta.sqrMagnitude > 0.000001f)
-                        direction = delta.normalized;
-                    mechanicalDistance = raycast.hit.distance;
+            Ray ray;
+            if (inspectionSystemsOverlayActive) {
+                ray = camera.ScreenPointToRay(mousePosition);
+                origin = ray.origin;
+                direction = ray.direction;
+            } else {
+                try {
+                    if (raycast.hit.transform != null) {
+                        Vector3 delta = raycast.hit.point - origin;
+                        if (delta.sqrMagnitude > 0.000001f)
+                            direction = delta.normalized;
+                        mechanicalDistance = raycast.hit.distance;
+                    }
+                } catch {
                 }
-            } catch {
+                ray = new Ray(origin, direction);
             }
             if (direction.sqrMagnitude <= 0.000001f)
                 return false;
 
-            Ray ray = new Ray(origin, direction);
-            float maxDistance = mechanicalDistance < float.MaxValue ?
-                mechanicalDistance : 25f;
+            float maxDistance = inspectionSystemsOverlayActive ?
+                InspectionPointerRayDistance :
+                (mechanicalDistance < float.MaxValue ? mechanicalDistance :
+                    25f);
             float nearest = float.MaxValue;
             InteractiveObject nearestTarget = null;
             List<BodySelectionSurface> surfaces =
@@ -2473,7 +2770,8 @@ namespace Cms21GameplayPlus
             }
             if (nearestTarget == null)
                 return false;
-            if (mechanicalDistance < float.MaxValue &&
+            if (!inspectionSystemsOverlayActive &&
+                mechanicalDistance < float.MaxValue &&
                 nearest > mechanicalDistance + 0.001f)
                 return false;
             bodyTarget = nearestTarget;
@@ -2543,144 +2841,42 @@ namespace Cms21GameplayPlus
             return state;
         }
 
-        private static void UpdateBodyHold(CarLoader loader)
+        private static bool UpdateBodyHold(CarLoader loader)
         {
             BodyPassState state = GetBodyPassState(loader);
+            if (GetInspectionSkillLevel() <= 0) {
+                if (state != null)
+                    ResetBodyHold(state);
+                return false;
+            }
             if (state == null || state.Total <= 0) {
                 if (state != null)
                     ResetBodyHold(state);
-                return;
+                return false;
             }
             if (state.ExaminedSlots.Count >= state.Total) {
                 ResetBodyHold(state);
-                return;
+                return false;
             }
-            if (!Input.GetMouseButton(0)) {
-                ResetBodyHold(state);
-                return;
-            }
-
             state.HoldProgress = Mathf.Clamp01(state.HoldProgress +
                 Time.deltaTime / GetSharpEyeHoldSeconds());
             SetSharpEyeCursorFill(state.HoldProgress);
             if (state.HoldProgress < 1f)
-                return;
+                return false;
 
             state.HoldProgress = 0f;
             SetSharpEyeCursorFill(0f);
-            if (ProcessOneBodyStep(loader, state)) {
-                MarkInspectionProgressChanged();
-                if (state.ExaminedSlots.Count >= state.Total)
-                    ClearBodyHighlight();
-                PlaySwitchModeSound();
-            }
-        }
-
-        private static bool UpdateInspectionResetInput(Raycast raycast,
-            InteractiveObject target, bool bodyTarget)
-        {
-            if (Input.GetMouseButton(0)) {
-                inspectionSystemResetHoldProgress = 0f;
-                inspectionVehicleResetHoldProgress = 0f;
-                inspectionResetTargetId = -1;
+            if (!ProcessOneBodyStep(loader, state))
                 return false;
-            }
-
-            CarLoader loader = target != null ? GetCarLoader(target) : null;
-            if (loader == null)
-                loader = GetHoveredCarLoader(raycast);
-            if (loader != null)
-                inspectionResetLoader = loader;
-            else
-                loader = inspectionResetLoader;
-
-            bool targetHasProgress = target != null && loader != null &&
-                HasInspectionProgress(loader, target, bodyTarget);
-            bool vehicleHasProgress = loader != null &&
-                HasVehicleInspectionProgress(loader);
-            bool resetAllDown = Input.GetKey(KeyCode.Space);
-            if (!resetAllDown || !vehicleHasProgress) {
-                inspectionVehicleResetHoldProgress = 0f;
-                inspectionVehicleResetTriggered = false;
-            } else if (!inspectionVehicleResetTriggered) {
-                inspectionVehicleResetHoldProgress += Time.deltaTime;
-                if (inspectionVehicleResetHoldProgress >=
-                    GetSharpEyeHoldSeconds()) {
-                    ResetVehicleInspection(loader);
-                    inspectionVehicleResetTriggered = true;
-                    inspectionVehicleResetHoldProgress = 0f;
-                    inspectionSystemResetHoldProgress = 0f;
-                    inspectionResetTargetId = -1;
-                    return true;
-                }
-            }
-
-            bool resetSystemDown = Input.GetKey(KeyCode.LeftAlt);
-            if (!resetSystemDown) {
-                inspectionSystemResetHoldProgress = 0f;
-                inspectionSystemResetTriggered = false;
-                inspectionResetTargetId = -1;
-                return false;
-            }
-            if (!targetHasProgress ||
-                (!bodyTarget && !UsesSharpEyeInspection(target))) {
-                inspectionSystemResetHoldProgress = 0f;
-                inspectionResetTargetId = -1;
-                return false;
-            }
-
-            int targetId;
-            try {
-                targetId = target.GetInstanceID();
-            } catch {
-                return false;
-            }
-            if (inspectionResetTargetId != targetId) {
-                inspectionResetTargetId = targetId;
-                inspectionSystemResetHoldProgress = 0f;
-                inspectionSystemResetTriggered = false;
-            }
-            if (inspectionSystemResetTriggered)
-                return false;
-
-            inspectionSystemResetHoldProgress += Time.deltaTime;
-            if (inspectionSystemResetHoldProgress < GetSharpEyeHoldSeconds())
-                return false;
-
-            ResetInspectionTarget(loader, target, bodyTarget);
-            inspectionSystemResetTriggered = true;
-            inspectionSystemResetHoldProgress = 0f;
-            return true;
-        }
-
-        private static void ResetInspectionTarget(CarLoader loader,
-            InteractiveObject target, bool bodyTarget)
-        {
-            if (target == null)
-                return;
-            RestoreAllCarriers();
-            if (bodyTarget) {
-                if (loader != null)
-                    ResetBodyInspection(loader);
-                LogDiagnostic("inspection reset body car=" +
-                    SafeLoaderName(loader));
-            } else {
-                ResetSystemInspection(target);
-                LogDiagnostic("inspection reset system io=" +
-                    SafeIoId(target));
-            }
-            repeatClickArmed = false;
             MarkInspectionProgressChanged();
-            ClearSystemIndicator();
-            ClearBodyHighlight();
             PlaySwitchModeSound();
+            return true;
         }
 
         private static void ResetVehicleInspection(CarLoader loader)
         {
             if (loader == null)
                 return;
-            RestoreAllCarriers();
             ResetBodyInspection(loader);
 
             List<InteractiveObject> systems = GetInspectionSystems(loader);
@@ -2693,10 +2889,7 @@ namespace Cms21GameplayPlus
                 ResetSystemInspection(system);
                 resetSystems++;
             }
-            repeatClickArmed = false;
             MarkInspectionProgressChanged();
-            ClearSystemIndicator();
-            ClearBodyHighlight();
             LogDiagnostic("inspection reset vehicle car=" +
                 SafeLoaderName(loader) + " systems=" +
                 resetSystems.ToString(CultureInfo.InvariantCulture));
@@ -2737,13 +2930,12 @@ namespace Cms21GameplayPlus
                 return;
             }
 
-            SystemPassState state;
-            if (SystemPassStates.TryGetValue(systemId, out state))
-                RestoreCarrier(state);
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part) ||
+                    InspectionVisualSystem.IsDependentVisualPart(system,
+                        SafePartId(part)))
                     continue;
                 ResetPartInspectionState(part);
             }
@@ -2756,20 +2948,20 @@ namespace Cms21GameplayPlus
             if (part == null)
                 return;
             WriteMember(part, "IsExamined", false);
-            try {
-                part.SwitchSolidColor(false);
-            } catch {
-            }
         }
 
-        private static void ResetInspectionResetInput(bool destroyHints)
+        private static void ResetInspectionResetState()
         {
-            inspectionResetTargetId = -1;
             inspectionSystemResetHoldProgress = 0f;
             inspectionVehicleResetHoldProgress = 0f;
             inspectionSystemResetTriggered = false;
             inspectionVehicleResetTriggered = false;
             inspectionResetLoader = null;
+        }
+
+        private static void ResetInspectionResetInput(bool destroyHints)
+        {
+            ResetInspectionResetState();
             if (destroyHints)
                 DestroyInspectionResetHints();
             else
@@ -2921,18 +3113,15 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static void UpdateInspectionSystemListUi(Raycast raycast)
+        private static void UpdateInspectionSystemListUi(CarLoader loader)
         {
             if (!inspectionSystemsOverlayActive) {
                 if (inspectionSystemListVisible)
                     DestroyInspectionSystemList();
                 return;
             }
-
-            inspectionSystemListVisible = true;
-            CarLoader loader = inspectionSystemsOverlayLoader;
-            if (loader == null)
-                loader = GetHoveredCarLoader(raycast);
+            if (!inspectionSystemListVisible)
+                return;
             if (loader == null)
                 loader = inspectionResetLoader;
             if (loader == null)
@@ -2985,6 +3174,9 @@ namespace Cms21GameplayPlus
                     textSource == null)
                     return false;
 
+                int skillLevel = GetInspectionSkillLevel();
+                if (skillLevel <= 0)
+                    return false;
                 List<InspectionSystemListEntry> entries =
                     GetInspectionSystemListEntries(loader);
                 if (entries.Count == 0)
@@ -3013,6 +3205,8 @@ namespace Cms21GameplayPlus
                 panelRect.sizeDelta = new Vector2(
                     Mathf.Max(InspectionSystemListWidth,
                         statsRect.rect.width),
+                    InspectionSystemListHeaderHeight +
+                    InspectionSystemListRowGap +
                     entries.Count * InspectionSystemListRowHeight +
                     (entries.Count - 1) * InspectionSystemListRowGap);
                 UnityEngine.UI.Image panelImage =
@@ -3023,6 +3217,8 @@ namespace Cms21GameplayPlus
                 }
                 inspectionSystemListPanel = panelRect;
 
+                AddInspectionSystemListHeader(panelRect, backgroundSource,
+                    textSource);
                 for (int index = 0; index < entries.Count; index++)
                     AddInspectionSystemListRow(panelRect, backgroundSource,
                         textSource, entries[index], index);
@@ -3037,8 +3233,9 @@ namespace Cms21GameplayPlus
         private struct InspectionSystemListEntry
         {
             internal string Name;
-            internal bool Available;
-            internal bool Completed;
+            internal int MaximumPercent;
+            internal int ProgressPercent;
+            internal float ProgressFill;
         }
 
         private static List<InspectionSystemListEntry>
@@ -3049,11 +3246,12 @@ namespace Cms21GameplayPlus
             int skillLevel = GetInspectionSkillLevel();
             BodyPassState bodyState = GetBodyPassState(loader);
             if (bodyState != null && bodyState.Total > 0) {
-                entries.Add(new InspectionSystemListEntry {
-                    Name = GetBodyDisplayName(),
-                    Available = skillLevel >= 1,
-                    Completed = bodyState.ExaminedSlots.Count >= bodyState.Total
-                });
+                int available = skillLevel >= 1 ? bodyState.Total : 0;
+                int examined = available > 0 ? Math.Min(available,
+                    bodyState.ExaminedSlots.Count) : 0;
+                entries.Add(CreateInspectionSystemListEntry(
+                    GetBodyDisplayName(), examined, available,
+                    bodyState.Total));
             }
 
             List<InteractiveObject> systems = GetInspectionSystems(loader);
@@ -3062,18 +3260,64 @@ namespace Cms21GameplayPlus
                 if (system == null)
                     continue;
                 int examined;
-                int total;
-                GetSystemProgress(system, out examined, out total);
-                if (total <= 0)
+                int available;
+                int full;
+                GetSystemAvailableProgress(system, skillLevel, out examined,
+                    out available, out full);
+                if (available <= 0)
                     continue;
-                int requiredLevel = GetRequiredInspectionSkillLevel(system);
-                entries.Add(new InspectionSystemListEntry {
-                    Name = GetLocalizedSystemName(system),
-                    Available = skillLevel >= requiredLevel,
-                    Completed = examined >= total
-                });
+                entries.Add(CreateInspectionSystemListEntry(
+                    GetLocalizedSystemName(system), examined, available,
+                    full));
             }
             return entries;
+        }
+
+        private static InspectionSystemListEntry CreateInspectionSystemListEntry(
+            string name, int examined, int available, int full)
+        {
+            float maximum = full > 0 ?
+                Mathf.Clamp01((float)available / full) : 0f;
+            float progress = full > 0 ?
+                Mathf.Clamp01((float)examined / full) : 0f;
+            return new InspectionSystemListEntry {
+                Name = name,
+                MaximumPercent = Mathf.RoundToInt(maximum * 100f),
+                ProgressPercent = Mathf.RoundToInt(progress * 100f),
+                ProgressFill = available > 0 ?
+                    Mathf.Clamp01((float)examined / available) : 0f
+            };
+        }
+
+        private static void AddInspectionSystemListHeader(
+            RectTransform panelRect, UnityEngine.UI.Image backgroundSource,
+            UnityEngine.UI.Text textSource)
+        {
+            RectTransform rowRect = CreateInspectionSystemListRowBackground(
+                panelRect, backgroundSource, "Header", 0f,
+                InspectionSystemListHeaderHeight);
+            if (rowRect == null)
+                return;
+            AddInspectionSystemListBadge(rowRect, backgroundSource,
+                textSource, "HeaderNumber", "#", 0f,
+                InspectionSystemListNumberWidth, Color.clear, Color.white);
+            float rightColumns = InspectionSystemListMaximumWidth +
+                InspectionSystemListProgressWidth + 4f;
+            AddInspectionSystemListText(rowRect, textSource,
+                GetInspectionHintLabel("LOC_SharpEyeSystemHeaderName"),
+                InspectionSystemListNumberWidth + 4f, rightColumns,
+                TextAnchor.MiddleLeft, 7, Color.white);
+            AddInspectionSystemListText(rowRect, textSource,
+                GetInspectionHintLabel("LOC_SharpEyeSystemHeaderMaximum"),
+                -(InspectionSystemListProgressWidth +
+                    InspectionSystemListMaximumWidth + 2f),
+                InspectionSystemListMaximumWidth, TextAnchor.MiddleCenter,
+                7, Color.white, true);
+            AddInspectionSystemListText(rowRect, textSource,
+                GetInspectionHintLabel("LOC_SharpEyeSystemHeaderProgress"),
+                -InspectionSystemListProgressWidth,
+                InspectionSystemListProgressWidth, TextAnchor.MiddleCenter,
+                7, Color.white, true);
         }
 
         private static void AddInspectionSystemListRow(
@@ -3081,143 +3325,213 @@ namespace Cms21GameplayPlus
             UnityEngine.UI.Text textSource, InspectionSystemListEntry entry,
             int index)
         {
+            float y = -(InspectionSystemListHeaderHeight +
+                InspectionSystemListRowGap + index *
+                (InspectionSystemListRowHeight + InspectionSystemListRowGap));
+            RectTransform rowRect = CreateInspectionSystemListRowBackground(
+                panelRect, backgroundSource, "System_" +
+                (index + 1).ToString(CultureInfo.InvariantCulture), y,
+                InspectionSystemListRowHeight);
+            if (rowRect == null)
+                return;
+
+            AddInspectionSystemListBadge(rowRect, backgroundSource,
+                textSource, "Number",
+                (index + 1).ToString(CultureInfo.InvariantCulture),
+                0f, InspectionSystemListNumberWidth,
+                inspectionSystemListUnavailableColor, Color.black);
+            AddInspectionSystemListName(rowRect, textSource, entry.Name);
+            AddInspectionSystemListBadge(rowRect, backgroundSource,
+                textSource, "Maximum",
+                entry.MaximumPercent.ToString(CultureInfo.InvariantCulture) +
+                    "%",
+                -(InspectionSystemListProgressWidth +
+                    InspectionSystemListMaximumWidth + 2f),
+                InspectionSystemListMaximumWidth,
+                inspectionSystemListUnavailableColor, Color.black, true);
+            AddInspectionSystemListProgress(rowRect, backgroundSource,
+                textSource, entry.ProgressPercent, entry.ProgressFill);
+        }
+
+        private static RectTransform CreateInspectionSystemListRowBackground(
+            RectTransform panelRect, UnityEngine.UI.Image backgroundSource,
+            string name, float y, float height)
+        {
             GameObject rowObject = UnityEngine.Object.Instantiate(
                 backgroundSource.gameObject) as GameObject;
             if (rowObject == null)
-                return;
-            rowObject.name = "System_" +
-                (index + 1).ToString(CultureInfo.InvariantCulture);
+                return null;
+            rowObject.name = name;
             RectTransform rowRect = rowObject.GetComponent<RectTransform>();
             UnityEngine.UI.Image rowImage =
                 rowObject.GetComponent<UnityEngine.UI.Image>();
             if (rowRect == null || rowImage == null) {
                 UnityEngine.Object.Destroy(rowObject);
-                return;
+                return null;
             }
             rowRect.SetParent(panelRect, false);
             rowRect.anchorMin = new Vector2(0f, 1f);
             rowRect.anchorMax = new Vector2(1f, 1f);
             rowRect.pivot = new Vector2(0.5f, 1f);
-            rowRect.anchoredPosition = new Vector2(0f,
-                -index * (InspectionSystemListRowHeight +
-                    InspectionSystemListRowGap));
-            rowRect.sizeDelta = new Vector2(0f,
-                InspectionSystemListRowHeight);
+            rowRect.anchoredPosition = new Vector2(0f, y);
+            rowRect.sizeDelta = new Vector2(0f, height);
             rowImage.raycastTarget = false;
-
-            Color stateColor = !entry.Available ?
-                inspectionSystemListUnavailableColor : entry.Completed ?
-                inspectionSystemListCompletedColor : Color.white;
-            Color stateTextColor = entry.Available && !entry.Completed ?
-                Color.black : Color.white;
-            AddInspectionSystemListTag(rowRect, backgroundSource, textSource,
-                (index + 1).ToString(CultureInfo.InvariantCulture),
-                stateColor, stateTextColor, true);
-            AddInspectionSystemListName(rowRect, textSource, entry.Name);
-            string statusKey = !entry.Available ?
-                "LOC_SharpEyeSystemUnavailable" : entry.Completed ?
-                "LOC_SharpEyeSystemInspected" :
-                "LOC_SharpEyeSystemNotInspected";
-            AddInspectionSystemListTag(rowRect, backgroundSource, textSource,
-                GetInspectionHintLabel(statusKey), stateColor, stateTextColor,
-                false);
             rowObject.SetActive(true);
+            return rowRect;
         }
 
-        private static void AddInspectionSystemListTag(RectTransform rowRect,
-            UnityEngine.UI.Image backgroundSource,
-            UnityEngine.UI.Text textSource, string value, Color background,
-            Color foreground, bool number)
+        private static void AddInspectionSystemListBadge(
+            RectTransform rowRect, UnityEngine.UI.Image backgroundSource,
+            UnityEngine.UI.Text textSource, string name, string value,
+            float rightOrLeft, float width, Color background,
+            Color foreground, bool rightAnchored = false)
         {
-            GameObject tagObject = UnityEngine.Object.Instantiate(
+            GameObject badgeObject = UnityEngine.Object.Instantiate(
                 backgroundSource.gameObject) as GameObject;
-            if (tagObject == null)
+            if (badgeObject == null)
                 return;
-            tagObject.name = number ? "Number" : "Status";
-            RectTransform tagRect = tagObject.GetComponent<RectTransform>();
-            UnityEngine.UI.Image tagImage =
-                tagObject.GetComponent<UnityEngine.UI.Image>();
-            if (tagRect == null || tagImage == null) {
-                UnityEngine.Object.Destroy(tagObject);
+            badgeObject.name = name;
+            RectTransform badgeRect =
+                badgeObject.GetComponent<RectTransform>();
+            UnityEngine.UI.Image badgeImage =
+                badgeObject.GetComponent<UnityEngine.UI.Image>();
+            if (badgeRect == null || badgeImage == null) {
+                UnityEngine.Object.Destroy(badgeObject);
                 return;
             }
-            tagRect.SetParent(rowRect, false);
-            tagRect.anchorMin = new Vector2(number ? 0f : 1f, 0f);
-            tagRect.anchorMax = new Vector2(number ? 0f : 1f, 1f);
-            tagRect.pivot = new Vector2(number ? 0f : 1f, 0.5f);
-            tagRect.anchoredPosition = Vector2.zero;
-            tagRect.sizeDelta = new Vector2(number ?
-                InspectionSystemListNumberWidth :
-                InspectionSystemListStatusWidth, 0f);
-            tagImage.color = background;
-            tagImage.raycastTarget = false;
+            badgeRect.SetParent(rowRect, false);
+            if (rightAnchored) {
+                badgeRect.anchorMin = new Vector2(1f, 0f);
+                badgeRect.anchorMax = new Vector2(1f, 1f);
+                badgeRect.pivot = new Vector2(0f, 0.5f);
+            } else {
+                badgeRect.anchorMin = new Vector2(0f, 0f);
+                badgeRect.anchorMax = new Vector2(0f, 1f);
+                badgeRect.pivot = new Vector2(0f, 0.5f);
+            }
+            badgeRect.anchoredPosition = new Vector2(rightOrLeft, 0f);
+            badgeRect.sizeDelta = new Vector2(width, 0f);
+            badgeImage.color = background;
+            badgeImage.raycastTarget = false;
+            AddInspectionSystemListText(badgeRect, textSource, value, 0f, 0f,
+                TextAnchor.MiddleCenter, 8, foreground, false, true);
+            badgeObject.SetActive(true);
+        }
 
-            GameObject textObject = UnityEngine.Object.Instantiate(
-                textSource.gameObject) as GameObject;
-            if (textObject == null)
+        private static void AddInspectionSystemListProgress(
+            RectTransform rowRect, UnityEngine.UI.Image backgroundSource,
+            UnityEngine.UI.Text textSource, int progressPercent, float fill)
+        {
+            GameObject barObject = UnityEngine.Object.Instantiate(
+                backgroundSource.gameObject) as GameObject;
+            if (barObject == null)
                 return;
-            RectTransform textRect =
-                textObject.GetComponent<RectTransform>();
-            UnityEngine.UI.Text text =
-                textObject.GetComponent<UnityEngine.UI.Text>();
-            if (textRect == null || text == null) {
-                UnityEngine.Object.Destroy(textObject);
+            barObject.name = "Progress";
+            RectTransform barRect = barObject.GetComponent<RectTransform>();
+            UnityEngine.UI.Image barImage =
+                barObject.GetComponent<UnityEngine.UI.Image>();
+            if (barRect == null || barImage == null) {
+                UnityEngine.Object.Destroy(barObject);
                 return;
             }
-            textRect.SetParent(tagRect, false);
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = Vector2.zero;
-            textRect.offsetMax = Vector2.zero;
-            text.text = value;
-            text.fontSize = number ? 9 : 8;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = 7;
-            text.resizeTextMaxSize = number ? 9 : 8;
-            text.color = foreground;
-            text.raycastTarget = false;
-            if (text.canvasRenderer != null)
-                text.canvasRenderer.SetColor(foreground);
-            textObject.SetActive(true);
-            tagObject.SetActive(true);
+            barRect.SetParent(rowRect, false);
+            barRect.anchorMin = new Vector2(1f, 0f);
+            barRect.anchorMax = new Vector2(1f, 1f);
+            barRect.pivot = new Vector2(1f, 0.5f);
+            barRect.anchoredPosition = Vector2.zero;
+            barRect.sizeDelta = new Vector2(InspectionSystemListProgressWidth,
+                0f);
+            barImage.color = inspectionSystemListUnavailableColor;
+            barImage.raycastTarget = false;
+
+            if (fill > 0f) {
+                GameObject fillObject = UnityEngine.Object.Instantiate(
+                    backgroundSource.gameObject) as GameObject;
+                if (fillObject != null) {
+                    fillObject.name = "Fill";
+                    RectTransform fillRect =
+                        fillObject.GetComponent<RectTransform>();
+                    UnityEngine.UI.Image fillImage =
+                        fillObject.GetComponent<UnityEngine.UI.Image>();
+                    if (fillRect != null && fillImage != null) {
+                        fillRect.SetParent(barRect, false);
+                        fillRect.anchorMin = Vector2.zero;
+                        fillRect.anchorMax = new Vector2(
+                            Mathf.Clamp01(fill), 1f);
+                        fillRect.offsetMin = Vector2.zero;
+                        fillRect.offsetMax = Vector2.zero;
+                        fillImage.color = inspectionSystemListCompletedColor;
+                        fillImage.raycastTarget = false;
+                        fillObject.SetActive(true);
+                    } else {
+                        UnityEngine.Object.Destroy(fillObject);
+                    }
+                }
+            }
+            AddInspectionSystemListText(barRect, textSource,
+                progressPercent.ToString(CultureInfo.InvariantCulture) + "%",
+                0f, 0f, TextAnchor.MiddleCenter, 8, Color.black, false, true);
+            barObject.SetActive(true);
         }
 
         private static void AddInspectionSystemListName(RectTransform rowRect,
             UnityEngine.UI.Text textSource, string name)
         {
+            float rightColumns = InspectionSystemListMaximumWidth +
+                InspectionSystemListProgressWidth + 6f;
+            string displayName = string.IsNullOrEmpty(name) ?
+                "?" : name.Replace("\r", " ").Replace("\n", " ");
+            AddInspectionSystemListText(rowRect, textSource,
+                displayName.ToUpperInvariant(),
+                InspectionSystemListNumberWidth + 4f, rightColumns,
+                TextAnchor.MiddleLeft, 8, inspectionSystemListTextColor);
+        }
+
+        private static void AddInspectionSystemListText(
+            RectTransform parent, UnityEngine.UI.Text textSource,
+            string value, float leftOrRight, float oppositeInset,
+            TextAnchor alignment, int fontSize, Color color,
+            bool rightAnchored = false, bool stretch = false)
+        {
             GameObject textObject = UnityEngine.Object.Instantiate(
                 textSource.gameObject) as GameObject;
             if (textObject == null)
                 return;
-            textObject.name = "Name";
-            RectTransform textRect =
-                textObject.GetComponent<RectTransform>();
+            RectTransform textRect = textObject.GetComponent<RectTransform>();
             UnityEngine.UI.Text text =
                 textObject.GetComponent<UnityEngine.UI.Text>();
             if (textRect == null || text == null) {
                 UnityEngine.Object.Destroy(textObject);
                 return;
             }
-            textRect.SetParent(rowRect, false);
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(
-                InspectionSystemListNumberWidth + 6f, 0f);
-            textRect.offsetMax = new Vector2(
-                -InspectionSystemListStatusWidth - 6f, 0f);
-            string displayName = string.IsNullOrEmpty(name) ?
-                "?" : name.Replace("\r", " ").Replace("\n", " ");
-            text.text = displayName.ToUpperInvariant();
-            text.fontSize = 9;
-            text.alignment = TextAnchor.MiddleLeft;
+            textRect.SetParent(parent, false);
+            if (stretch) {
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.offsetMin = Vector2.zero;
+                textRect.offsetMax = Vector2.zero;
+            } else if (rightAnchored) {
+                textRect.anchorMin = new Vector2(1f, 0f);
+                textRect.anchorMax = new Vector2(1f, 1f);
+                textRect.pivot = new Vector2(0f, 0.5f);
+                textRect.anchoredPosition = new Vector2(leftOrRight, 0f);
+                textRect.sizeDelta = new Vector2(oppositeInset, 0f);
+            } else {
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.offsetMin = new Vector2(leftOrRight, 0f);
+                textRect.offsetMax = new Vector2(-oppositeInset, 0f);
+            }
+            text.text = value;
+            text.fontSize = fontSize;
+            text.alignment = alignment;
             text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = 7;
-            text.resizeTextMaxSize = 9;
-            text.color = Color.white;
+            text.resizeTextMinSize = 6;
+            text.resizeTextMaxSize = fontSize;
+            text.color = color;
             text.raycastTarget = false;
             if (text.canvasRenderer != null)
-                text.canvasRenderer.SetColor(Color.white);
+                text.canvasRenderer.SetColor(color);
             textObject.SetActive(true);
         }
 
@@ -3334,26 +3648,32 @@ namespace Cms21GameplayPlus
         }
 
         private static void UpdateInspectionResetHints(CarLoader loader,
-            InteractiveObject target, bool bodyTarget)
+            InteractiveObject target, bool bodyTarget,
+            InspectionTargetState targetState, int skillLevel,
+            bool examineHeld)
         {
             if (loader == null) {
                 HideInspectionActionHints();
                 return;
             }
-            if (Input.GetMouseButton(0)) {
+            if (examineHeld) {
                 HideInspectionActionHints();
                 SuppressInspectionFooterForHold();
                 return;
             }
 
+            bool examineHintWasVisible = inspectionExamineHintVisible;
+            bool systemResetHintWasVisible =
+                inspectionSystemResetHintVisible;
+            bool vehicleResetHintWasVisible =
+                inspectionVehicleResetHintVisible;
+
             bool hasTargetProgress = target != null &&
-                HasInspectionProgress(loader, target, bodyTarget);
+                targetState.HasProgress;
             bool canResetTarget = hasTargetProgress &&
-                ((bodyTarget && GetInspectionSkillLevel() > 0) ||
-                    (!bodyTarget && UsesSharpEyeInspection(target)));
+                (bodyTarget ? skillLevel > 0 : targetState.Available > 0);
             bool hasVehicleProgress = HasVehicleInspectionProgress(loader);
-            bool showExamineHint = target != null &&
-                ShouldShowFallbackExamineHint(loader, target, bodyTarget);
+            bool showExamineHint = target != null && targetState.CanExamine;
 
             CaptureInspectionResetHintSource();
             if (inspectionResetHintSource == null) {
@@ -3378,10 +3698,6 @@ namespace Cms21GameplayPlus
                         LogInspectionExamineHintShown(loader, target,
                             bodyTarget);
                     }
-                    UiIntegrationBridge.SetNativeFooterHintHoldProgress(
-                        inspectionExamineHint,
-                        GetInspectionExamineHintProgress(loader, target,
-                            bodyTarget));
                 }
             } else {
                 HideInspectionExamineHint();
@@ -3402,8 +3718,9 @@ namespace Cms21GameplayPlus
                         inspectionSystemResetHintLabel = systemLabel;
                         inspectionSystemResetHintVisible = true;
                     }
-                    UiIntegrationBridge.SetNativeFooterHintHoldProgress(
+                    SetInspectionResetHintHoldProgress(
                         inspectionSystemResetHint,
+                        ref inspectionSystemResetHintProgress,
                         inspectionSystemResetHoldProgress /
                             GetSharpEyeHoldSeconds());
                 } else {
@@ -3423,8 +3740,9 @@ namespace Cms21GameplayPlus
                         inspectionVehicleResetHintLabel = vehicleLabel;
                         inspectionVehicleResetHintVisible = true;
                     }
-                    UiIntegrationBridge.SetNativeFooterHintHoldProgress(
+                    SetInspectionResetHintHoldProgress(
                         inspectionVehicleResetHint,
+                        ref inspectionVehicleResetHintProgress,
                         inspectionVehicleResetHoldProgress /
                             GetSharpEyeHoldSeconds());
                 } else {
@@ -3435,7 +3753,12 @@ namespace Cms21GameplayPlus
             }
 
             ShowInspectionSystemsHint();
-            LayoutInspectionResetHints();
+            if (examineHintWasVisible != inspectionExamineHintVisible ||
+                systemResetHintWasVisible !=
+                    inspectionSystemResetHintVisible ||
+                vehicleResetHintWasVisible !=
+                    inspectionVehicleResetHintVisible)
+                UpdateInspectionHintHostVisibility();
         }
 
         private static void ShowInspectionSystemsHint()
@@ -3443,7 +3766,9 @@ namespace Cms21GameplayPlus
             if (inspectionResetHintSource == null)
                 return;
             string label = GetInspectionHintLabel(
-                "LOC_SharpEyeShowSystems");
+                inspectionSystemListVisible ?
+                    "LOC_SharpEyeHideSystems" :
+                    "LOC_SharpEyeShowSystems");
             if (inspectionShowSystemsHint == null) {
                 inspectionShowSystemsHint =
                     UiIntegrationBridge.CreateNativeFooterHint(
@@ -3456,45 +3781,18 @@ namespace Cms21GameplayPlus
             }
             if (inspectionShowSystemsHint == null)
                 return;
-            if (!inspectionShowSystemsHintVisible ||
-                !string.Equals(inspectionShowSystemsHintLabel, label,
-                    StringComparison.Ordinal)) {
+            bool wasVisible = inspectionShowSystemsHintVisible;
+            if (!wasVisible || !string.Equals(inspectionShowSystemsHintLabel,
+                    label, StringComparison.Ordinal)) {
                 UiIntegrationBridge.UpdateNativeFooterHint(
                     inspectionShowSystemsHint, label, true);
                 ApplyInspectionHintVisualStyle(inspectionShowSystemsHint);
                 inspectionShowSystemsHintLabel = label;
                 inspectionShowSystemsHintVisible = true;
+                if (!wasVisible)
+                    UpdateInspectionHintHostVisibility();
             }
         }
-
-        private static bool ShouldShowFallbackExamineHint(CarLoader loader,
-            InteractiveObject target, bool bodyTarget)
-        {
-            if (bodyTarget) {
-                BodyPassState bodyState = GetBodyPassState(loader);
-                return bodyState != null && bodyState.Total > 0 &&
-                    bodyState.ExaminedSlots.Count < bodyState.Total;
-            }
-            if (!UsesSharpEyeInspection(target))
-                return false;
-            SystemPassState state = GetSystemPassState(target);
-            if (state == null || state.Total <= 0)
-                return false;
-            int examined;
-            int total;
-            GetSystemProgress(target, out examined, out total);
-            if (total <= 0 || examined >= total)
-                return false;
-
-            int nativeTotal = GetRawNativeSystemPartCount(target);
-            int nativeExamined = GetRawNativeSystemExaminedCount(target);
-            bool nativePending = nativeTotal > 0 &&
-                nativeExamined < nativeTotal;
-            if (!nativePending && !HasPendingCustomStep(target, state))
-                return false;
-            return !IsNativeExamineUiActive();
-        }
-
         private static void LogInspectionExamineHintShown(
             CarLoader loader, InteractiveObject target, bool bodyTarget)
         {
@@ -3513,33 +3811,12 @@ namespace Cms21GameplayPlus
             int examined;
             int total;
             GetSystemProgress(target, out examined, out total);
-            int nativeTotal = GetRawNativeSystemPartCount(target);
-            int nativeExamined = GetRawNativeSystemExaminedCount(target);
             LogDiagnostic("inspection examine hint show system=" +
                 SafeIoId(target) + " progress=" +
                 examined.ToString(CultureInfo.InvariantCulture) + "/" +
-                total.ToString(CultureInfo.InvariantCulture) + " native=" +
-                nativeExamined.ToString(CultureInfo.InvariantCulture) + "/" +
-                nativeTotal.ToString(CultureInfo.InvariantCulture) +
+                total.ToString(CultureInfo.InvariantCulture) +
                 " customPending=" +
                 (state != null && HasPendingCustomStep(target, state)).ToString());
-        }
-
-        private static float GetInspectionExamineHintProgress(
-            CarLoader loader, InteractiveObject target, bool bodyTarget)
-        {
-            if (!Input.GetMouseButton(0))
-                return 0f;
-            if (bodyTarget) {
-                BodyPassState bodyState = GetBodyPassState(loader);
-                return bodyState != null ? bodyState.HoldProgress : 0f;
-            }
-            SystemPassState state = GetSystemPassState(target);
-            if (state == null)
-                return 0f;
-            return Mathf.Max(state.ManualHoldProgress,
-                Mathf.Max(state.CarrierVisualProgress,
-                    state.NativeVisualProgress));
         }
 
         private static string GetInspectionExamineHintLabel()
@@ -3569,23 +3846,6 @@ namespace Cms21GameplayPlus
             }
             return inspectionExamineHint != null;
         }
-
-        private static bool HasInspectionProgress(CarLoader loader,
-            InteractiveObject target, bool bodyTarget)
-        {
-            if (bodyTarget) {
-                BodyPassState bodyState = GetBodyPassState(loader);
-                return bodyState != null && bodyState.Total > 0 &&
-                    bodyState.ExaminedSlots.Count > 0;
-            }
-            if (!UsesSharpEyeInspection(target))
-                return false;
-            int examined;
-            int total;
-            GetSystemProgress(target, out examined, out total);
-            return total > 0 && examined > 0;
-        }
-
         private static bool EnsureInspectionResetHints()
         {
             if (inspectionResetHintSource == null)
@@ -3702,31 +3962,6 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static void LayoutInspectionResetHints()
-        {
-            if (inspectionExamineHint != null &&
-                inspectionExamineHint.Rect != null) {
-                inspectionExamineHint.Rect.SetAsLastSibling();
-                ApplyInspectionHintVisualStyle(inspectionExamineHint);
-            }
-            if (inspectionSystemResetHint != null &&
-                inspectionSystemResetHint.Rect != null) {
-                inspectionSystemResetHint.Rect.SetAsLastSibling();
-                ApplyInspectionHintVisualStyle(inspectionSystemResetHint);
-            }
-            if (inspectionVehicleResetHint != null &&
-                inspectionVehicleResetHint.Rect != null) {
-                inspectionVehicleResetHint.Rect.SetAsLastSibling();
-                ApplyInspectionHintVisualStyle(inspectionVehicleResetHint);
-            }
-            if (inspectionShowSystemsHint != null &&
-                inspectionShowSystemsHint.Rect != null) {
-                inspectionShowSystemsHint.Rect.SetAsLastSibling();
-                ApplyInspectionHintVisualStyle(inspectionShowSystemsHint);
-            }
-            UpdateInspectionHintHostVisibility();
-        }
-
         private static void UpdateInspectionHintHostVisibility()
         {
             Transform host = inspectionHintHost;
@@ -3800,12 +4035,21 @@ namespace Cms21GameplayPlus
             inspectionHintSourceWasActiveSelf = false;
         }
 
+        private static void SetInspectionResetHintHoldProgress(
+            UiIntegrationBridge.NativeHintHandle handle, ref float cached,
+            float value)
+        {
+            value = Mathf.Clamp01(value);
+            if (Mathf.Approximately(cached, value))
+                return;
+            UiIntegrationBridge.SetNativeFooterHintHoldProgress(handle, value);
+            cached = value;
+        }
+
         private static void HideInspectionExamineHint()
         {
             if (!inspectionExamineHintVisible)
                 return;
-            UiIntegrationBridge.SetNativeFooterHintHoldProgress(
-                inspectionExamineHint, 0f);
             UiIntegrationBridge.UpdateNativeFooterHint(
                 inspectionExamineHint, inspectionExamineHintLabel ??
                     string.Empty, false);
@@ -3816,8 +4060,8 @@ namespace Cms21GameplayPlus
         {
             if (!inspectionSystemResetHintVisible)
                 return;
-            UiIntegrationBridge.SetNativeFooterHintHoldProgress(
-                inspectionSystemResetHint, 0f);
+            SetInspectionResetHintHoldProgress(inspectionSystemResetHint,
+                ref inspectionSystemResetHintProgress, 0f);
             UiIntegrationBridge.UpdateNativeFooterHint(
                 inspectionSystemResetHint,
                 inspectionSystemResetHintLabel ??
@@ -3829,8 +4073,8 @@ namespace Cms21GameplayPlus
         {
             if (!inspectionVehicleResetHintVisible)
                 return;
-            UiIntegrationBridge.SetNativeFooterHintHoldProgress(
-                inspectionVehicleResetHint, 0f);
+            SetInspectionResetHintHoldProgress(inspectionVehicleResetHint,
+                ref inspectionVehicleResetHintProgress, 0f);
             UiIntegrationBridge.UpdateNativeFooterHint(
                 inspectionVehicleResetHint,
                 inspectionVehicleResetHintLabel ??
@@ -3850,24 +4094,36 @@ namespace Cms21GameplayPlus
                 return;
             UiIntegrationBridge.UpdateNativeFooterHint(
                 inspectionShowSystemsHint,
-                inspectionShowSystemsHintLabel ??
-                    GetInspectionHintLabel("LOC_SharpEyeShowSystems"), false);
+                inspectionShowSystemsHintLabel ?? GetInspectionHintLabel(
+                    inspectionSystemsOverlayActive ?
+                        "LOC_SharpEyeHideSystems" :
+                        "LOC_SharpEyeShowSystems"), false);
             inspectionShowSystemsHintVisible = false;
+            UpdateInspectionHintHostVisibility();
         }
 
         private static void HideInspectionActionHints()
         {
+            bool changed = inspectionExamineHintVisible ||
+                inspectionSystemResetHintVisible ||
+                inspectionVehicleResetHintVisible;
             HideInspectionExamineHint();
             HideInspectionResetActionHints();
-            UpdateInspectionHintHostVisibility();
+            if (changed)
+                UpdateInspectionHintHostVisibility();
         }
 
         private static void HideInspectionResetHints()
         {
+            bool showSystemsHintWasVisible = inspectionShowSystemsHintVisible;
+            bool actionHintsVisible = inspectionExamineHintVisible ||
+                inspectionSystemResetHintVisible ||
+                inspectionVehicleResetHintVisible;
             HideInspectionExamineHint();
             HideInspectionResetActionHints();
             HideInspectionShowSystemsHint();
-            UpdateInspectionHintHostVisibility();
+            if (!showSystemsHintWasVisible && actionHintsVisible)
+                UpdateInspectionHintHostVisibility();
         }
 
         private static void DestroyInspectionResetHints()
@@ -3899,6 +4155,8 @@ namespace Cms21GameplayPlus
             inspectionSystemResetHintVisible = false;
             inspectionVehicleResetHintVisible = false;
             inspectionShowSystemsHintVisible = false;
+            inspectionSystemResetHintProgress = 0f;
+            inspectionVehicleResetHintProgress = 0f;
             inspectionExamineHintLabel = null;
             inspectionSystemResetHintLabel = null;
             inspectionVehicleResetHintLabel = null;
@@ -3907,7 +4165,7 @@ namespace Cms21GameplayPlus
 
         private static void ResetBodyHold(BodyPassState state)
         {
-            if (state == null)
+            if (state == null || state.HoldProgress <= 0f)
                 return;
             state.HoldProgress = 0f;
             SetSharpEyeCursorFill(0f);
@@ -3995,7 +4253,8 @@ namespace Cms21GameplayPlus
         private static void QueueBodyPartShoppingList(CarLoader loader,
             BodyPartSlot slot)
         {
-            if (loader == null || slot == null || string.IsNullOrEmpty(slot.Id) ||
+            if (!GlobalState.IsGarageSceneActive || loader == null ||
+                slot == null || string.IsNullOrEmpty(slot.Id) ||
                 !IsPurchasablePart(slot.Id))
                 return;
             if (!IsBodyPartUnmounted(slot) &&
@@ -4043,78 +4302,35 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static void UpdateBodyIndicator(CarLoader loader,
-            InteractiveObject bodyObject)
+        private static bool IsInspectionSceneActive()
         {
-            BodyPassState state = GetBodyPassState(loader);
-            if (state == null || state.Total <= 0) {
-                ClearSystemIndicator();
-                return;
-            }
+            return GlobalState.IsGarageSceneActive ||
+                GlobalState.IsJunkyardSceneActive;
+        }
 
-            int examined = Math.Min(state.Total, state.ExaminedSlots.Count);
-            string text = examined.ToString(CultureInfo.InvariantCulture) +
-                " / " + state.Total.ToString(CultureInfo.InvariantCulture);
-            try {
-                UIManager ui = UIManager.Get();
-                if (ui != null)
-                    ui.SetBonusTextDescription(text);
-                indicatorSystem = bodyObject;
-                indicatorText = text;
-                indicatorDirty = false;
-            } catch {
-            }
+        private static bool IsInspectionMode(gameMode mode)
+        {
+            if (GlobalState.IsGarageSceneActive)
+                return mode == gameMode.ExamineGarage;
+            return GlobalState.IsJunkyardSceneActive &&
+                (mode == gameMode.ExamineGarage ||
+                    mode == gameMode.ExamineCondition);
         }
 
         private static bool IsExamineGarageModeActive()
         {
             try {
                 GameMode mode = GameMode.Get();
-                return mode != null &&
-                    mode.GetCurrentMode() == gameMode.ExamineGarage;
+                return mode != null && IsInspectionMode(
+                    mode.GetCurrentMode());
             } catch {
                 return false;
             }
         }
 
-        internal static void ObserveMouseOverTarget(InteractiveObject target)
+        internal static bool ShouldAllowNativeMouseOver()
         {
-            if (!GlobalState.IsGarageSceneActive ||
-                !examineModeSessionActive || !IsExamineGarageModeActive() ||
-                suppressMouseOverObservation)
-                return;
-            observedMouseOverTarget = target;
-            observedMouseOverFrame = Time.frameCount;
-            if (!IsWholeCarBodyObject(target)) {
-                observedBodyMouseOverTarget = null;
-                observedBodyMouseOverFrame = -1;
-                return;
-            }
-
-            bool changed = observedBodyMouseOverTarget == null ||
-                observedBodyMouseOverTarget.GetInstanceID() !=
-                    target.GetInstanceID() ||
-                Time.frameCount - observedBodyMouseOverFrame > 1;
-            observedBodyMouseOverTarget = target;
-            observedBodyMouseOverFrame = Time.frameCount;
-            if (changed)
-                LogDiagnostic("body mouseover observed io=" + SafeIoId(target));
-        }
-
-        internal static void HideBodyMouseOverLabel(InteractiveObject target)
-        {
-            if (!GlobalState.IsGarageSceneActive || target == null ||
-                !IsWholeCarBodyObject(target) || IsExamineGarageModeActive())
-                return;
-
-            try {
-                UIManager ui = UIManager.Get();
-                UnityEngine.UI.Text text = ui != null ?
-                    ReadMember(ui, "TextDescription") as UnityEngine.UI.Text : null;
-                if (text != null)
-                    text.text = string.Empty;
-            } catch {
-            }
+            return NativeInspectionModeReplacement.ShouldAllowNativeMouseOver();
         }
 
         private static bool HideNativeExamineHint()
@@ -4143,18 +4359,19 @@ namespace Cms21GameplayPlus
 
         private static void SuppressInspectionFooterForHold()
         {
+            if (inspectionFooterHoldSuppressed)
+                return;
             HideNativeExamineHint();
             if (inspectionHintHost == null ||
                 inspectionHintHost.gameObject == null ||
                 !inspectionHintHost.name.StartsWith("_HoldExamine",
                     StringComparison.Ordinal))
                 return;
-            if (!inspectionFooterHoldSuppressed) {
-                inspectionFooterHoldWasActiveSelf =
-                    inspectionHintHost.gameObject.activeSelf;
-                inspectionFooterHoldSuppressed = true;
-            }
-            inspectionHintHost.gameObject.SetActive(false);
+            inspectionFooterHoldWasActiveSelf =
+                inspectionHintHost.gameObject.activeSelf;
+            inspectionFooterHoldSuppressed = true;
+            if (inspectionHintHost.gameObject.activeSelf)
+                inspectionHintHost.gameObject.SetActive(false);
         }
 
         private static void RestoreInspectionFooterAfterHold()
@@ -4185,18 +4402,10 @@ namespace Cms21GameplayPlus
             inspectionHintHostWasActiveSelf = false;
         }
 
-        private static void HideCompletedNativeExamineHint(
-            InteractiveObject target)
-        {
-            if (target != null && HideNativeExamineHint())
-                LogDiagnostic("completed system native examine hint hidden " +
-                    "system=" + SafeIoId(target));
-        }
-
         internal static bool ShouldAllowNativeExamineHintShow(
             ControlDescription control)
         {
-            if (!GlobalState.IsGarageSceneActive ||
+            if (!IsInspectionSceneActive() ||
                 !examineModeSessionActive || !IsExamineGarageModeActive() ||
                 control == null || control.gameObject == null ||
                 control.transform == null || control.transform.parent == null ||
@@ -4206,21 +4415,9 @@ namespace Cms21GameplayPlus
                     StringComparison.Ordinal))
                 return true;
 
-            string reason = null;
+            string reason = inspectionSystemsOverlayActive ?
+                "sharp-eye" : "sharp-eye-off";
             InteractiveObject system = capturedExamineSystem;
-            if (inspectionSystemsOverlayActive)
-                reason = "overlay";
-            else if (Input.GetMouseButton(0))
-                reason = "hold";
-            else if (system != null && UsesSharpEyeInspection(system) &&
-                GetRawNativeSystemPartCount(system) <= 0)
-                reason = "zero-native";
-
-            if (reason == null) {
-                inspectionNativeHintSuppressionDiagnosticKey = null;
-                return true;
-            }
-
             string key = reason + "|" + SafeIoId(system);
             if (!string.Equals(
                     inspectionNativeHintSuppressionDiagnosticKey, key,
@@ -4266,48 +4463,6 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static void CacheHoveredSystemPart(Raycast raycast,
-            InteractiveObject interactiveObject, CarLoader loader)
-        {
-            if (interactiveObject == null || loader == null ||
-                GetSystemSpecificationCount(interactiveObject) > 0)
-                return;
-
-            PartScript part = null;
-            try {
-                part = InvokeNoArgs(GameScript.Get(),
-                    "GetPartMouseOver") as PartScript;
-            } catch {
-            }
-            if (part == null && raycast != null) {
-                part = ReadMember(raycast, "partScript") as PartScript ??
-                    ReadMember(raycast, "PartScript") as PartScript;
-            }
-            if (part == null && raycast != null) {
-                try {
-                    Transform hitTransform = raycast.hit.transform;
-                    if (hitTransform != null)
-                        part = hitTransform.GetComponentInParent<PartScript>();
-                } catch {
-                }
-            }
-            if (part == null)
-                return;
-
-            try {
-                CarLoader partLoader = part.GetComponentInParent<CarLoader>();
-                if (partLoader != null &&
-                    partLoader.GetInstanceID() != loader.GetInstanceID())
-                    return;
-            } catch {
-            }
-
-            int systemId = interactiveObject.GetInstanceID();
-            SystemSinglePartFallback[systemId] = part;
-            SystemSpecificationCountCache.Remove(systemId);
-            SystemPassStates.Remove(systemId);
-        }
-
         private static SystemPassState GetSystemPassState(
             InteractiveObject system)
         {
@@ -4323,11 +4478,11 @@ namespace Cms21GameplayPlus
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part))
                     continue;
-                state.HasMountedParts = true;
                 string id = SafePartId(part);
-                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id))
+                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id) ||
+                    InspectionVisualSystem.IsDependentVisualPart(system, id))
                     continue;
                 try {
                     if (part.IsExamined)
@@ -4336,25 +4491,35 @@ namespace Cms21GameplayPlus
                 }
             }
             List<string> specification = GetSystemSpecificationPartIds(system);
-            state.Total = Math.Max(specification.Count,
+            int inspectableSpecificationCount = 0;
+            for (int index = 0; index < specification.Count; index++) {
+                string id = specification[index];
+                if (InspectionVisualSystem.IsDependentVisualPart(system, id) ||
+                    GetPartInspectionSkillLevel(system, id) <= 0)
+                    continue;
+                inspectableSpecificationCount++;
+            }
+            state.Total = Math.Max(inspectableSpecificationCount,
                 state.ExaminedPartInstanceIds.Count + CountUnexaminedPresentParts(
-                    parts, state.ExaminedPartInstanceIds));
+                    system, parts, state.ExaminedPartInstanceIds));
             SystemPassStates.Add(systemId, state);
             return state;
         }
 
         private static int CountUnexaminedPresentParts(
-            List<PartScript> parts, HashSet<int> examinedPartInstanceIds)
+            InteractiveObject system, List<PartScript> parts,
+            HashSet<int> examinedPartInstanceIds)
         {
             if (parts == null)
                 return 0;
             int count = 0;
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part))
                     continue;
                 string id = SafePartId(part);
-                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id))
+                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id) ||
+                    InspectionVisualSystem.IsDependentVisualPart(system, id))
                     continue;
                 if (examinedPartInstanceIds == null ||
                     !examinedPartInstanceIds.Contains(part.GetInstanceID()))
@@ -4363,174 +4528,16 @@ namespace Cms21GameplayPlus
             return count;
         }
 
-        private static void AddNativeCarrierCandidate(SystemPassState state,
-            PartScript part)
-        {
-            if (state == null || part == null)
-                return;
-            int instanceId = part.GetInstanceID();
-            for (int index = 0; index < state.NativeCarrierCandidates.Count;
-                index++) {
-                PartScript current = state.NativeCarrierCandidates[index];
-                if (current != null && current.GetInstanceID() == instanceId)
-                    return;
-            }
-            state.NativeCarrierCandidates.Add(part);
-        }
-
-        private static void TryStartCustomContinuation(InteractiveObject system,
-            SystemPassState state)
-        {
-            if (system == null || state == null ||
-                !HasPendingCustomStep(system, state))
-                return;
-
-            int nativeTotal = GetRawNativeSystemPartCount(system);
-            int nativeExamined = GetRawNativeSystemExaminedCount(system);
-            if (nativeTotal > 0 && nativeExamined < nativeTotal)
-                return;
-
-            state.CustomContinuationActive = true;
-            EnsureCustomContinuation(system, state);
-            LogDiagnostic("custom continuation start system=" +
-                SafeIoId(system) + " native=" +
-                nativeExamined.ToString(CultureInfo.InvariantCulture) + "/" +
-                nativeTotal.ToString(CultureInfo.InvariantCulture));
-        }
-
-        private static void EnsureCustomContinuation(InteractiveObject system,
-            SystemPassState state)
-        {
-            if (system == null || state == null ||
-                !state.CustomContinuationActive)
-                return;
-            if (!HasPendingCustomStep(system, state)) {
-                state.CustomContinuationActive = false;
-                RestoreCarrier(state);
-                return;
-            }
-            if (state.CarrierPart != null)
-                return;
-
-            for (int index = 0; index < state.NativeCarrierCandidates.Count;
-                index++) {
-                if (TryArmCarrier(system, state,
-                        state.NativeCarrierCandidates[index]))
-                    return;
-            }
-
-            List<PartScript> parts = GetSystemParts(system);
-            for (int index = 0; index < parts.Count; index++) {
-                PartScript candidate = parts[index];
-                if (candidate == null ||
-                    !state.ExaminedPartInstanceIds.Contains(
-                        candidate.GetInstanceID()))
-                    continue;
-                if (TryArmCarrier(system, state, candidate))
-                    return;
-            }
-
-        }
-
-        private static void UpdateCarrierVisualHold(SystemPassState state)
-        {
-            if (state == null || !state.CustomContinuationActive ||
-                state.CarrierPart == null) {
-                ResetCarrierVisualHold(state);
-                return;
-            }
-
-            bool mouseDown = Input.GetMouseButton(0);
-            if (!state.CarrierVisualStateLogged) {
-                state.CarrierVisualStateLogged = true;
-                LogDiagnostic("carrier visual update carrier=" +
-                    SafePartId(state.CarrierPart) + " mouse=" +
-                    mouseDown.ToString() + " nativeUi=" +
-                    IsNativeExamineUiActive().ToString());
-            }
-
-            if (!mouseDown) {
-                ResetCarrierVisualHold(state);
-                return;
-            }
-
-            if (!state.CarrierVisualMouseDownLogged) {
-                state.CarrierVisualMouseDownLogged = true;
-                LogDiagnostic("carrier visual mouse down carrier=" +
-                    SafePartId(state.CarrierPart));
-            }
-
-            state.CarrierVisualProgress = Mathf.Clamp01(
-                state.CarrierVisualProgress + Time.deltaTime /
-                GetSharpEyeHoldSeconds());
-            SetSharpEyeCursorFill(state.CarrierVisualProgress);
-        }
-
-        private static void ResetCarrierVisualHold(SystemPassState state)
-        {
-            if (state == null)
-                return;
-            state.CarrierVisualProgress = 0f;
-            if (state.ManualHoldProgress <= 0f)
-                SetSharpEyeCursorFill(0f);
-        }
-
-        private static void UpdateNativeVisualHold(
-            InteractiveObject system, SystemPassState state)
-        {
-            if (system == null || state == null ||
-                state.CustomContinuationActive) {
-                ResetNativeVisualHold(state);
-                return;
-            }
-
-            int nativeTotal = GetRawNativeSystemPartCount(system);
-            int nativeExamined = GetRawNativeSystemExaminedCount(system);
-            if (nativeTotal <= 0 || nativeExamined >= nativeTotal ||
-                !Input.GetMouseButton(0)) {
-                ResetNativeVisualHold(state);
-                return;
-            }
-
-            state.NativeVisualProgress = Mathf.Clamp01(
-                state.NativeVisualProgress + Time.deltaTime /
-                GetSharpEyeHoldSeconds());
-            SetSharpEyeCursorFill(state.NativeVisualProgress);
-        }
-
-        private static void ResetNativeVisualHold(SystemPassState state)
-        {
-            if (state == null)
-                return;
-            state.NativeVisualProgress = 0f;
-            if (state.ManualHoldProgress <= 0f &&
-                state.CarrierVisualProgress <= 0f)
-                SetSharpEyeCursorFill(0f);
-        }
-
-        private static void UpdateManualCustomHold(InteractiveObject system,
+        private static bool UpdateManualCustomHold(InteractiveObject system,
             SystemPassState state)
         {
             if (system == null || state == null)
-                return;
+                return false;
 
-            int nativeTotal = GetRawNativeSystemPartCount(system);
-            bool canUseManualDriver = nativeTotal <= 0;
-            if (!canUseManualDriver && state.CustomContinuationActive &&
-                state.CarrierPart == null)
-                canUseManualDriver =
-                    GetRawNativeSystemExaminedCount(system) >= nativeTotal;
-            bool needsManualDriver = canUseManualDriver &&
-                HasPendingCustomStep(system, state);
+            bool needsManualDriver = HasPendingCustomStep(system, state);
             if (!needsManualDriver) {
                 ResetManualCustomHold(state);
-                return;
-            }
-
-            state.CustomContinuationActive = true;
-            if (!Input.GetMouseButton(0)) {
-                ResetManualCustomHold(state);
-                return;
+                return false;
             }
 
             state.ManualHoldProgress = Mathf.Clamp01(
@@ -4538,29 +4545,25 @@ namespace Cms21GameplayPlus
                 GetSharpEyeHoldSeconds());
             SetSharpEyeCursorFill(state.ManualHoldProgress);
             if (state.ManualHoldProgress < 1f)
-                return;
+                return false;
 
             state.ManualHoldProgress = 0f;
             SetSharpEyeCursorFill(0f);
-            if (!ProcessOneCustomSystemStep(system)) {
-                state.CustomContinuationActive = false;
-                return;
-            }
+            if (!ProcessOneCustomSystemStep(system))
+                return false;
 
-            state.PassStarted = true;
-            indicatorDirty = true;
             PlaySwitchModeSound();
             LogDiagnostic("manual custom examine success system=" +
                 SafeIoId(system));
+            return true;
         }
 
         private static void ResetManualCustomHold(SystemPassState state)
         {
-            if (state == null)
+            if (state == null || state.ManualHoldProgress <= 0f)
                 return;
             state.ManualHoldProgress = 0f;
-            if (state.CarrierVisualProgress <= 0f)
-                SetSharpEyeCursorFill(0f);
+            SetSharpEyeCursorFill(0f);
         }
 
         private static void SetSharpEyeCursorFill(float value)
@@ -4573,7 +4576,8 @@ namespace Cms21GameplayPlus
 
             float fill = Mathf.Clamp01(value * CursorVisualCompletionScale);
             try {
-                image.fillAmount = fill;
+                if (!Mathf.Approximately(image.fillAmount, fill))
+                    image.fillAmount = fill;
                 if (image.gameObject != null &&
                     image.gameObject.activeSelf != (fill > 0f))
                     image.gameObject.SetActive(fill > 0f);
@@ -4769,87 +4773,20 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static bool TryArmCarrier(InteractiveObject system,
-            SystemPassState state, PartScript part)
-        {
-            if (system == null || state == null || part == null ||
-                IsUnmountedPart(part))
-                return false;
-            try {
-                if (!part.IsExamined)
-                    return false;
-            } catch {
-                return false;
-            }
-
-            LogDiagnostic("carrier arm ENTER system=" +
-                SafeIoId(system) + " part=" + SafePartId(part));
-            int nativeTotal = GetRawNativeSystemPartCount(system);
-            int before = GetRawNativeSystemExaminedCount(system);
-            if (!WriteMember(part, "IsExamined", false)) {
-                LogDiagnostic("carrier arm WRITE FAILED system=" +
-                    SafeIoId(system) + " part=" + SafePartId(part));
-                return false;
-            }
-            LogDiagnostic("carrier arm WRITTEN system=" +
-                SafeIoId(system) + " part=" + SafePartId(part));
-            if (nativeTotal > 0) {
-                int after = GetRawNativeSystemExaminedCount(system);
-                if (after >= before) {
-                    WriteMember(part, "IsExamined", true);
-                    return false;
-                }
-            }
-
-            state.CarrierPart = part;
-            state.CarrierVisualStateLogged = false;
-            state.CarrierVisualMouseDownLogged = false;
-            LogDiagnostic("custom continuation armed system=" +
-                SafeIoId(system) + " carrier=" + SafePartId(part));
-            return true;
-        }
-
-        private static void RestoreCarrier(SystemPassState state)
-        {
-            if (state == null || state.CarrierPart == null)
-                return;
-            PartScript carrier = state.CarrierPart;
-            state.CarrierPart = null;
-            ResetCarrierVisualHold(state);
-            try {
-                if (!carrier.IsExamined) {
-                    LogDiagnostic("carrier restore ENTER part=" +
-                        SafePartId(carrier));
-                    WriteMember(carrier, "IsExamined", true);
-                    LogDiagnostic("carrier restore RETURN part=" +
-                        SafePartId(carrier));
-                }
-            } catch (Exception exception) {
-                LogDiagnostic("carrier restore failed part=" +
-                    SafePartId(carrier) + " exception=" +
-                    exception.GetType().Name);
-            }
-        }
-
-        private static void RestoreAllCarriers()
-        {
-            foreach (KeyValuePair<int, SystemPassState> pair in
-                SystemPassStates)
-                RestoreCarrier(pair.Value);
-        }
-
         private static bool HasPendingCustomStep(InteractiveObject system,
             SystemPassState state)
         {
             if (system == null || state == null)
                 return false;
+            int skillLevel = GetInspectionSkillLevel();
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part))
                     continue;
                 string id = SafePartId(part);
-                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id))
+                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id) ||
+                    !IsPartAvailableForInspection(system, id, skillLevel))
                     continue;
                 if (!state.ExaminedPartInstanceIds.Contains(part.GetInstanceID()))
                     return true;
@@ -4859,33 +4796,15 @@ namespace Cms21GameplayPlus
             List<int> missing = GetMissingSpecificationSlots(system,
                 specification);
             for (int index = 0; index < missing.Count; index++) {
-                if (!state.ExaminedMissingSlots.Contains(missing[index]))
+                int slot = missing[index];
+                if (slot < 0 || slot >= specification.Count ||
+                    !IsPartAvailableForInspection(system, specification[slot],
+                        skillLevel))
+                    continue;
+                if (!state.ExaminedMissingSlots.Contains(slot))
                     return true;
             }
             return false;
-        }
-
-        private static int GetRawNativeSystemPartCount(InteractiveObject system)
-        {
-            if (system == null)
-                return 0;
-            try {
-                return Math.Max(0, system.GetAmountOfParts());
-            } catch {
-                return 0;
-            }
-        }
-
-        private static int GetRawNativeSystemExaminedCount(
-            InteractiveObject system)
-        {
-            if (system == null)
-                return 0;
-            try {
-                return Math.Max(0, system.GetAmountOfExaminedParts());
-            } catch {
-                return 0;
-            }
         }
 
         private static bool TryExamineOnePresentPart(
@@ -4899,12 +4818,14 @@ namespace Cms21GameplayPlus
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part))
                     continue;
 
                 string id = SafePartId(part);
                 int instanceId = part.GetInstanceID();
                 if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id) ||
+                    !IsPartAvailableForInspection(system, id,
+                        GetInspectionSkillLevel()) ||
                     state.ExaminedPartInstanceIds.Contains(instanceId))
                     continue;
 
@@ -4931,7 +4852,6 @@ namespace Cms21GameplayPlus
                         LogDiagnostic("custom present CONFIRMED system=" +
                             SafeIoId(system) + " part=" + id);
                         state.ExaminedPartInstanceIds.Add(instanceId);
-                        state.PassStarted = true;
                         CarLoader loader = GetCarLoader(system);
                         if (loader != null) {
                             LogDiagnostic("custom present SHOP ENTER system=" +
@@ -4993,12 +4913,25 @@ namespace Cms21GameplayPlus
 
             for (int index = 0; index < missingSlots.Count; index++) {
                 int candidate = missingSlots[index];
-                if (state.ExaminedMissingSlots.Contains(candidate))
+                if (candidate < 0 || candidate >= specification.Count ||
+                    !IsPartAvailableForInspection(system,
+                        specification[candidate], GetInspectionSkillLevel()) ||
+                    state.ExaminedMissingSlots.Contains(candidate))
                     continue;
 
                 state.ExaminedMissingSlots.Add(candidate);
                 slotIndex = candidate;
                 partId = specification[candidate];
+                PartScript previewPart;
+                bool hasPreview = inspectionSystemsOverlayMissingPartBySlot.
+                    TryGetValue(GetInspectionSystemsOverlayMissingPartKey(
+                        system, candidate), out previewPart) &&
+                    previewPart != null;
+                LogDiagnostic("inspection visual missing examined system=" +
+                    SafeIoId(system) + " part=" + partId + " slot=" +
+                    candidate.ToString(CultureInfo.InvariantCulture) +
+                    " preview=" + (hasPreview ? SafePartId(previewPart) :
+                        "<none>"));
                 CarLoader loader = GetCarLoader(system);
                 if (loader != null)
                     QueueSinglePurchaseIfNeeded(loader,
@@ -5023,7 +4956,7 @@ namespace Cms21GameplayPlus
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part))
+                if (IsInspectionLogicallyUnmountedPart(part))
                     continue;
                 string id = SafePartId(part);
                 if (string.IsNullOrEmpty(id))
@@ -5048,7 +4981,8 @@ namespace Cms21GameplayPlus
         private static void QueueSinglePartShoppingList(CarLoader loader,
             InteractiveObject system, PartScript part)
         {
-            if (loader == null || part == null)
+            if (!GlobalState.IsGarageSceneActive || loader == null ||
+                part == null)
                 return;
             string id = SafePartId(part);
             if (string.IsNullOrEmpty(id))
@@ -5323,7 +5257,8 @@ namespace Cms21GameplayPlus
         private static void QueueSinglePurchaseIfNeeded(CarLoader loader,
             PurchaseKey key, InteractiveObject system = null)
         {
-            if (loader == null || key == null || string.IsNullOrEmpty(key.Id) ||
+            if (!GlobalState.IsGarageSceneActive || loader == null ||
+                key == null || string.IsNullOrEmpty(key.Id) ||
                 !IsPurchasablePart(key.Id))
                 return;
 
@@ -5588,7 +5523,8 @@ namespace Cms21GameplayPlus
         private static void LogDiagnostic(string message)
         {
             if (diagnosticLineCount >= DiagnosticLineLimit ||
-                string.IsNullOrEmpty(message))
+                string.IsNullOrEmpty(message) ||
+                !ShouldWriteDiagnostic(message))
                 return;
             diagnosticLineCount++;
             try {
@@ -5597,6 +5533,30 @@ namespace Cms21GameplayPlus
                     " " + message + Environment.NewLine);
             } catch {
             }
+        }
+
+        private static bool ShouldWriteDiagnostic(string message)
+        {
+            return message.StartsWith("garage session",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection skill",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection mode",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection systems overlay",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection overlay",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection visual",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection indicator",
+                    StringComparison.Ordinal) ||
+                message.StartsWith("inspection reset",
+                    StringComparison.Ordinal) ||
+                message.IndexOf("failed",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                message.IndexOf("exception=",
+                    StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static string SafeIoId(InteractiveObject io)
@@ -5621,13 +5581,6 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static string SafeLogText(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return string.Empty;
-            return value.Replace("\r", " ").Replace("\n", " ");
-        }
-
         private static bool IsWholeCarBodyObject(InteractiveObject interactiveObject)
         {
             if (interactiveObject == null)
@@ -5646,74 +5599,10 @@ namespace Cms21GameplayPlus
                     StringComparison.OrdinalIgnoreCase);
         }
 
-        private static List<PurchaseKey> BuildSystemShoppingList(
-            CarLoader loader, InteractiveObject system)
-        {
-            Dictionary<PurchaseKey, int> desired =
-                new Dictionary<PurchaseKey, int>();
-            List<PurchaseKey> order = new List<PurchaseKey>();
-            Dictionary<string, int> wheelCounts =
-                new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            List<string> partIds = GetSystemSpecificationPartIds(system);
-            for (int index = 0; index < partIds.Count; index++) {
-                string id = partIds[index];
-                if (string.IsNullOrEmpty(id) || !IsPurchasablePart(id))
-                    continue;
-                if (IsWheelId(id)) {
-                    int count;
-                    wheelCounts.TryGetValue(id, out count);
-                    wheelCounts[id] = count + 1;
-                    continue;
-                }
-                AddDesired(desired, order,
-                    new PurchaseKey(id, PurchaseKind.Part));
-            }
-            AppendSystemWheels(loader, wheelCounts, desired, order);
-            return BuildRemainingShoppingQueue(desired, order);
-        }
-
-        private static List<PurchaseKey> BuildRemainingShoppingQueue(
-            Dictionary<PurchaseKey, int> desired, List<PurchaseKey> order)
-        {
-            Dictionary<PurchaseKey, int> remaining =
-                new Dictionary<PurchaseKey, int>(desired);
-            SubtractPerfectInventoryParts(remaining);
-            SubtractPerfectWarehouseParts(remaining);
-            if (!SubtractCurrentShopList(remaining))
-                SubtractObservedShopList(remaining);
-            SubtractPendingShopList(remaining);
-
-            List<PurchaseKey> queue = new List<PurchaseKey>();
-            for (int index = 0; index < order.Count; index++) {
-                PurchaseKey key = order[index];
-                int count;
-                if (!remaining.TryGetValue(key, out count) || count <= 0)
-                    continue;
-                for (int amount = 0; amount < count; amount++)
-                    queue.Add(key);
-            }
-            return queue;
-        }
-
-        private static void QueueSystemShoppingList(CarLoader loader,
-            InteractiveObject system)
-        {
-            if (loader == null || system == null || IsWholeCarBodyObject(system))
-                return;
-
-            try {
-                List<PurchaseKey> additions =
-                    BuildSystemShoppingList(loader, system);
-                QueueShoppingListAdditions(additions);
-            } catch (Exception exception) {
-                ModLogger.Log("[SharpEye] Failed to prepare system shopping list." +
-                    Environment.NewLine + exception, Types.LoggingLevels.Error);
-            }
-        }
-
         private static void QueueShoppingListAdditions(List<PurchaseKey> additions)
         {
-            if (additions == null || additions.Count == 0)
+            if (!GlobalState.IsGarageSceneActive || additions == null ||
+                additions.Count == 0)
                 return;
 
             for (int index = 0; index < additions.Count; index++) {
@@ -5767,18 +5656,6 @@ namespace Cms21GameplayPlus
             PendingShoppingListCounts.Clear();
         }
 
-        private static void SubtractPendingShopList(
-            Dictionary<PurchaseKey, int> remaining)
-        {
-            foreach (KeyValuePair<PurchaseKey, int> pair in
-                PendingShoppingListCounts) {
-                int count;
-                if (!remaining.TryGetValue(pair.Key, out count) || count <= 0)
-                    continue;
-                remaining[pair.Key] = Math.Max(0, count - pair.Value);
-            }
-        }
-
         private static CarLoader GetCarLoader(InteractiveObject interactiveObject)
         {
             if (interactiveObject == null)
@@ -5825,26 +5702,6 @@ namespace Cms21GameplayPlus
             }
         }
 
-        private static int GetSystemSpecificationCount(
-            InteractiveObject interactiveObject)
-        {
-            if (interactiveObject == null)
-                return 0;
-
-            int instanceId = interactiveObject.GetInstanceID();
-            int cached;
-            if (SystemSpecificationCountCache.TryGetValue(instanceId,
-                    out cached))
-                return cached;
-
-            int examined;
-            int total;
-            GetSystemProgress(interactiveObject, out examined, out total);
-            if (total > 0)
-                SystemSpecificationCountCache[instanceId] = total;
-            return total;
-        }
-
         private static void GetSystemProgress(InteractiveObject interactiveObject,
             out int examined, out int total)
         {
@@ -5860,6 +5717,57 @@ namespace Cms21GameplayPlus
                 state.ExaminedMissingSlots.Count);
         }
 
+        private static void GetSystemAvailableProgress(
+            InteractiveObject system, int skillLevel, out int examined,
+            out int available, out int full)
+        {
+            examined = 0;
+            available = 0;
+            full = 0;
+            if (system == null)
+                return;
+
+            List<string> specification = GetSystemSpecificationPartIds(system);
+            for (int index = 0; index < specification.Count; index++) {
+                string id = specification[index];
+                if (InspectionVisualSystem.IsDependentVisualPart(system, id))
+                    continue;
+                int required = GetPartInspectionSkillLevel(system, id);
+                if (required <= 0)
+                    continue;
+                full++;
+                if (required <= skillLevel)
+                    available++;
+            }
+            SystemPassState state = GetSystemPassState(system);
+            if (state == null)
+                return;
+            List<PartScript> parts = GetSystemParts(system);
+            for (int index = 0; index < parts.Count; index++) {
+                PartScript part = parts[index];
+                if (IsInspectionLogicallyUnmountedPart(part))
+                    continue;
+                if (available <= 0)
+                    continue;
+                string id = SafePartId(part);
+                if (string.IsNullOrEmpty(id) ||
+                    !IsPartAvailableForInspection(system, id, skillLevel))
+                    continue;
+                if (state.ExaminedPartInstanceIds.Contains(part.GetInstanceID()))
+                    examined++;
+            }
+            if (available <= 0)
+                return;
+            foreach (int slot in state.ExaminedMissingSlots) {
+                if (slot < 0 || slot >= specification.Count)
+                    continue;
+                if (IsPartAvailableForInspection(system, specification[slot],
+                        skillLevel))
+                    examined++;
+            }
+            examined = Math.Min(examined, available);
+        }
+
         private static bool IsUnmountedPart(PartScript part)
         {
             if (part == null)
@@ -5870,30 +5778,6 @@ namespace Cms21GameplayPlus
                 return ToBool(value);
             value = ReadMember(part, "Unmounted");
             return value != null && ToBool(value);
-        }
-
-        private static int GetNativeSystemPartCount(
-            InteractiveObject interactiveObject)
-        {
-            if (interactiveObject == null)
-                return 0;
-            try {
-                return Math.Max(0, interactiveObject.GetAmountOfParts());
-            } catch {
-                return 0;
-            }
-        }
-
-        private static int GetNativeSystemExaminedCount(
-            InteractiveObject interactiveObject)
-        {
-            if (interactiveObject == null)
-                return 0;
-            try {
-                return Math.Max(0, interactiveObject.GetAmountOfExaminedParts());
-            } catch {
-                return 0;
-            }
         }
 
         private static List<string> GetSystemSpecificationPartIds(
@@ -5985,13 +5869,6 @@ namespace Cms21GameplayPlus
 
             CarLoader loader = GetCarLoader(interactiveObject);
             HashSet<int> seen = new HashSet<int>();
-            PartScript fallbackPart;
-            if (SystemSinglePartFallback.TryGetValue(
-                    interactiveObject.GetInstanceID(), out fallbackPart) &&
-                fallbackPart != null) {
-                seen.Add(fallbackPart.GetInstanceID());
-                result.Add(fallbackPart);
-            }
             for (int index = 0; index < SystemPartMemberNames.Length; index++)
                 AppendSystemPartCollection(ReadMember(interactiveObject,
                     SystemPartMemberNames[index]), result, seen);
@@ -6477,28 +6354,18 @@ namespace Cms21GameplayPlus
                     StringComparison.OrdinalIgnoreCase);
         }
 
-        private static void UpdateSystemIndicator(InteractiveObject system)
+        private static void SetInspectionIndicator(InteractiveObject system,
+            int examined, int available)
         {
-            if (system == null) {
+            if (system == null)
                 return;
-            }
-            if (!indicatorDirty && indicatorSystem != null &&
-                indicatorSystem.GetInstanceID() == system.GetInstanceID() &&
-                !string.IsNullOrEmpty(indicatorText)) {
-                try {
-                    UIManager ui = UIManager.Get();
-                    if (ui != null)
-                        ui.SetBonusTextDescription(indicatorText);
-                } catch {
-                }
-                return;
-            }
-
-            int examined;
-            int total;
-            GetSystemProgress(system, out examined, out total);
             string text = examined.ToString(CultureInfo.InvariantCulture) +
-                " / " + total.ToString(CultureInfo.InvariantCulture);
+                " / " + available.ToString(CultureInfo.InvariantCulture);
+            bool changed = indicatorDirty || indicatorSystem == null ||
+                indicatorSystem.GetInstanceID() != system.GetInstanceID() ||
+                !string.Equals(indicatorText, text, StringComparison.Ordinal);
+            if (!changed)
+                return;
             try {
                 UIManager ui = UIManager.Get();
                 if (ui != null)
@@ -6506,13 +6373,17 @@ namespace Cms21GameplayPlus
                 indicatorSystem = system;
                 indicatorText = text;
                 indicatorDirty = false;
+                LogDiagnostic("inspection indicator system=" +
+                    SafeIoId(system) + " progress=" + text + " skill=" +
+                    GetInspectionSkillLevel().ToString(
+                        CultureInfo.InvariantCulture) + " overlay=" +
+                    inspectionSystemsOverlayActive.ToString());
             } catch {
             }
         }
 
         private static void ClearSystemIndicator(bool force = false)
         {
-            ClearEmptySystemHighlight();
             if (!force && indicatorSystem == null &&
                 string.IsNullOrEmpty(indicatorText))
                 return;
@@ -6525,57 +6396,6 @@ namespace Cms21GameplayPlus
             indicatorSystem = null;
             indicatorText = null;
             indicatorDirty = true;
-        }
-
-        private static void AppendSystemWheels(CarLoader loader,
-            Dictionary<string, int> wheelCounts,
-            Dictionary<PurchaseKey, int> desired, List<PurchaseKey> order)
-        {
-            if (loader == null || wheelCounts == null || wheelCounts.Count == 0)
-                return;
-
-            object wheels = InvokeNoArgs(loader, "GetWheels");
-            VisitCollection(wheels, delegate(object value) {
-                if (value == null)
-                    return;
-
-                int size = ToRoundedInt(ReadMember(value, "Size"));
-                int width = ToRoundedInt(ReadMember(value, "Width"));
-                int profile = ToRoundedInt(ReadMember(value, "Profile"));
-                int et = ToRoundedInt(ReadMember(value, "ET"));
-                string rimId = ToText(ReadMember(value, "Rim"));
-                string tireId = ToText(ReadMember(value, "Tire"));
-
-                int rimCount;
-                if (!string.IsNullOrEmpty(rimId) &&
-                    wheelCounts.TryGetValue(rimId, out rimCount) &&
-                    rimCount > 0) {
-                    AddDesired(desired, order, new PurchaseKey(rimId,
-                        PurchaseKind.Rim, size, 0, 0, et));
-                    wheelCounts[rimId] = rimCount - 1;
-                }
-
-                int tireCount;
-                if (!string.IsNullOrEmpty(tireId) &&
-                    wheelCounts.TryGetValue(tireId, out tireCount) &&
-                    tireCount > 0) {
-                    AddDesired(desired, order, new PurchaseKey(tireId,
-                        PurchaseKind.Tire, size, width, profile));
-                    wheelCounts[tireId] = tireCount - 1;
-                }
-            });
-        }
-
-        private static void AddDesired(Dictionary<PurchaseKey, int> desired,
-            List<PurchaseKey> order, PurchaseKey key)
-        {
-            int count;
-            if (desired.TryGetValue(key, out count)) {
-                desired[key] = count + 1;
-                return;
-            }
-            desired.Add(key, 1);
-            order.Add(key);
         }
 
         private static void SubtractPerfectInventoryParts(
@@ -6648,7 +6468,7 @@ namespace Cms21GameplayPlus
             List<PartScript> parts = GetSystemParts(system);
             for (int index = 0; index < parts.Count; index++) {
                 PartScript part = parts[index];
-                if (part == null || IsUnmountedPart(part) ||
+                if (IsInspectionLogicallyUnmountedPart(part) ||
                     part.Condition < PerfectConditionThreshold)
                     continue;
                 string id = SafePartId(part);
@@ -6748,35 +6568,6 @@ namespace Cms21GameplayPlus
             return width == key.Width && profile == key.Profile;
         }
 
-        private static bool SubtractCurrentShopList(
-            Dictionary<PurchaseKey, int> remaining)
-        {
-            UIManager ui = UIManager.Get();
-            object shopListWindow = ReadMember(ui, "ShopListWindow");
-            object items = ReadMember(shopListWindow, "items");
-            if (items == null)
-                return false;
-
-            VisitCollection(items, delegate(object value) {
-                if (value == null)
-                    return;
-                string id = ToText(ReadMember(value, "ID"));
-                if (string.IsNullOrEmpty(id))
-                    return;
-
-                PurchaseKey key = CreateShopListKey(id,
-                    ReadMember(value, "AdditionalData"));
-                int count;
-                if (key == null || !remaining.TryGetValue(key, out count) ||
-                    count <= 0)
-                    return;
-
-                int amount = Math.Max(1, ToInt(ReadMember(value, "Amount"), 1));
-                remaining[key] = Math.Max(0, count - amount);
-            });
-            return true;
-        }
-
         private static PurchaseKey CreateShopListKey(string id,
             object additionalData)
         {
@@ -6795,17 +6586,6 @@ namespace Cms21GameplayPlus
                 }
             }
             return new PurchaseKey(id, PurchaseKind.Part);
-        }
-
-        private static void SubtractObservedShopList(
-            Dictionary<PurchaseKey, int> remaining)
-        {
-            foreach (KeyValuePair<PurchaseKey, int> pair in ObservedShopList) {
-                int count;
-                if (!remaining.TryGetValue(pair.Key, out count) || count <= 0)
-                    continue;
-                remaining[pair.Key] = Math.Max(0, count - pair.Value);
-            }
         }
 
         private static ShopListItemDataEx CopyShopListAdditionalData(
@@ -7249,29 +7029,6 @@ namespace Cms21GameplayPlus
     }
 
     [HarmonyPatch]
-    internal static class SharpEyeExamineRandomPartPatch
-    {
-        private static MethodBase TargetMethod()
-        {
-            return SharpEyeShoppingListFeature.FindExamineRandomPartMethod();
-        }
-
-        private static bool Prefix(InteractiveObject __instance, bool __0,
-            ref bool __result)
-        {
-            return SharpEyeShoppingListFeature.HandleExamineRandomPartPrefix(
-                __instance, __0, ref __result);
-        }
-
-        private static void Postfix(InteractiveObject __instance, bool __0,
-            ref bool __result)
-        {
-            SharpEyeShoppingListFeature.HandleExamineRandomPart(__instance, __0,
-                ref __result);
-        }
-    }
-
-    [HarmonyPatch]
     internal static class SharpEyePartExaminePatch
     {
         private static MethodBase TargetMethod()
@@ -7280,20 +7037,15 @@ namespace Cms21GameplayPlus
                 nameof(PartScript.Examine), new Type[] { typeof(bool) });
         }
 
-        private static void Prefix(PartScript __instance, out bool __state)
+        private static bool Prefix(PartScript __instance, bool __0)
         {
-            __state = false;
-            try {
-                __state = __instance != null && __instance.IsExamined;
-            } catch {
-            }
+            return SharpEyeShoppingListFeature.ShouldAllowPartExamine(
+                __instance, __0);
         }
 
-        private static void Postfix(PartScript __instance, bool __0,
-            bool __state)
+        private static void Postfix(PartScript __instance, bool __0)
         {
-            SharpEyeShoppingListFeature.HandlePartExamine(__instance, __0,
-                __state);
+            SharpEyeShoppingListFeature.HandlePartExamine(__instance, __0);
         }
     }
 
@@ -7318,6 +7070,27 @@ namespace Cms21GameplayPlus
     }
 
     [HarmonyPatch]
+    internal static class SharpEyeExamineConditionRaycastPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(Raycast), "ExamineCondition");
+        }
+
+        private static bool Prefix(Raycast __instance)
+        {
+            return SharpEyeShoppingListFeature.CaptureExamineConditionRaycast(
+                __instance);
+        }
+
+        private static void Postfix(Raycast __instance)
+        {
+            SharpEyeShoppingListFeature.HandleExamineConditionRaycast(
+                __instance);
+        }
+    }
+
+    [HarmonyPatch]
     internal static class SharpEyeGameModePatch
     {
         private static MethodBase TargetMethod()
@@ -7334,7 +7107,7 @@ namespace Cms21GameplayPlus
     }
 
     [HarmonyPatch]
-    internal static class SharpEyeBodyMouseOverLabelPatch
+    internal static class SharpEyeNativeMouseOverPatch
     {
         private static MethodBase TargetMethod()
         {
@@ -7344,10 +7117,9 @@ namespace Cms21GameplayPlus
                     typeof(InteractiveObject) });
         }
 
-        private static void Postfix(InteractiveObject __2)
+        private static bool Prefix()
         {
-            SharpEyeShoppingListFeature.ObserveMouseOverTarget(__2);
-            SharpEyeShoppingListFeature.HideBodyMouseOverLabel(__2);
+            return SharpEyeShoppingListFeature.ShouldAllowNativeMouseOver();
         }
     }
 

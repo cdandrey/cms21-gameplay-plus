@@ -4,7 +4,9 @@
   "LOC_SharpEyeResetVehicle": "Сброс всех систем",
   "LOC_SharpEyeBody": "Кузов",
   "LOC_SharpEyeAddedToShoppingList": "Добавлено в список",
-  "LOC_SharpEyeShowSystems": "Показать доступные системы",
+  "LOC_SharpEyeShowSystems": "Показать таблицу систем",
+  "LOC_SharpEyeHideSystems": "Скрыть таблицу систем",
+  "LOC_SharpEyeInspectionUnavailableSkill": "Осмотр систем недоступен. Улучшите навык «Острое зрение».",
   "LOC_SharpEyeSystemsProgress": "Доступно для полного осмотра: {1}, осмотрено: {0}",
   "LOC_SharpEyeSystemInspected": "Осмотрено",
   "LOC_SharpEyeSystemNotInspected": "Не осмотрено",
@@ -14,5 +16,8 @@
   "LOC_SharpEyeSuspensionRearLeft": "Подвеска левого заднего колеса",
   "LOC_SharpEyeSuspensionRearRight": "Подвеска правого заднего колеса",
   "LOC_SharpEyeSuspensionFrontCenter": "Передняя подвеска",
-  "LOC_SharpEyeSuspensionRearCenter": "Задняя подвеска"
+  "LOC_SharpEyeSuspensionRearCenter": "Задняя подвеска",
+  "LOC_SharpEyeSystemHeaderName": "Система",
+  "LOC_SharpEyeSystemHeaderMaximum": "Макс.",
+  "LOC_SharpEyeSystemHeaderProgress": "Прогресс"
 }

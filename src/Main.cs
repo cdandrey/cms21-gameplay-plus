@@ -53,6 +53,7 @@ namespace Cms21GameplayPlus
             DetectPlatform();
             bool melonDebug = Environment.GetCommandLineArgs().Contains("--melonloader.debug");
             LoadSettings();
+            SharpEyeInspectionRules.Load();
             UiIntegrationBridge.SyncBrakeDrumRepairability(
                 SettingsEntry.Value.allowBrakeLatheFixDrumBrake &&
                 RepairabilityManager.BrakeDrumLatheAvailable);
@@ -75,13 +76,16 @@ namespace Cms21GameplayPlus
         {
             bool garageStillLoaded = UnityEngine.SceneManagement.SceneManager
                 .GetSceneByName("garage").isLoaded;
+            bool junkyardStillLoaded = UnityEngine.SceneManagement.SceneManager
+                .GetSceneByName("Junkyard").isLoaded;
             GlobalState.IsGarageSceneActive = garageStillLoaded;
-            if (garageStillLoaded)
-                return;
+            GlobalState.IsJunkyardSceneActive = junkyardStillLoaded;
             if (sceneName == "garage")
                 SaveProfileMemory();
-            WarehouseMountSourceFeature.Reset();
-            SharpEyeShoppingListFeature.OnGarageSceneUnloaded();
+            if (!garageStillLoaded)
+                WarehouseMountSourceFeature.Reset();
+            if (!garageStillLoaded && !junkyardStillLoaded)
+                SharpEyeShoppingListFeature.OnGarageSceneUnloaded();
         }
 
         public override void OnSceneWasInitialized(int buildIndex, string sceneName)
@@ -93,12 +97,20 @@ namespace Cms21GameplayPlus
                 GlobalState.LoadedProfileId = NormalizeProfileId(
                     PlayerPrefs.GetInt("selectedProfile", 0));
                 GlobalState.IsGarageSceneActive = true;
+                GlobalState.IsJunkyardSceneActive = false;
                 SharpEyeShoppingListFeature.OnGarageSceneInitialized(
                     GlobalState.LoadedProfileId);
                 GarageDoorStateFeature.OnGarageSceneInitialized();
                 WarehouseMountSourceFeature.BeginRefreshAfterGarageLoad();
                 UiIntegrationBridge.SyncBrakeDrumRepairability(
                     SettingsEntry.Value.allowBrakeLatheFixDrumBrake);
+            } else if (sceneName == "Junkyard") {
+                GlobalState.LoadedProfileId = NormalizeProfileId(
+                    PlayerPrefs.GetInt("selectedProfile", 0));
+                GlobalState.IsGarageSceneActive = false;
+                GlobalState.IsJunkyardSceneActive = true;
+                SharpEyeShoppingListFeature.OnGarageSceneInitialized(
+                    GlobalState.LoadedProfileId);
             }
 
             if (sceneName == "Menu") {

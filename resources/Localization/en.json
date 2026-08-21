@@ -4,7 +4,9 @@
   "LOC_SharpEyeResetVehicle": "Reset all systems",
   "LOC_SharpEyeBody": "Body",
   "LOC_SharpEyeAddedToShoppingList": "Added to shopping list",
-  "LOC_SharpEyeShowSystems": "Show available systems",
+  "LOC_SharpEyeShowSystems": "Show systems table",
+  "LOC_SharpEyeHideSystems": "Hide systems table",
+  "LOC_SharpEyeInspectionUnavailableSkill": "System inspection unavailable. Improve the Sharp Eye skill.",
   "LOC_SharpEyeSystemsProgress": "Available for full inspection: {1}, inspected: {0}",
   "LOC_SharpEyeSystemInspected": "Inspected",
   "LOC_SharpEyeSystemNotInspected": "Not inspected",
@@ -14,5 +16,8 @@
   "LOC_SharpEyeSuspensionRearLeft": "Rear Left Suspension",
   "LOC_SharpEyeSuspensionRearRight": "Rear Right Suspension",
   "LOC_SharpEyeSuspensionFrontCenter": "Front Suspension",
-  "LOC_SharpEyeSuspensionRearCenter": "Rear Suspension"
+  "LOC_SharpEyeSuspensionRearCenter": "Rear Suspension",
+  "LOC_SharpEyeSystemHeaderName": "System",
+  "LOC_SharpEyeSystemHeaderMaximum": "Max.",
+  "LOC_SharpEyeSystemHeaderProgress": "Progress"
 }

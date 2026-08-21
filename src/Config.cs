@@ -69,11 +69,13 @@ namespace Cms21GameplayPlus
         public static readonly string cfgFile = @"Mods\CMS21GameplayPlus\CMS21GameplayPlus.cfg";
         public static readonly string cfgProfile = @"Mods\CMS21GameplayPlus\ProfileMemory.dat";
         public static readonly string cfgRepairability = @"Mods\CMS21GameplayPlus\Repairability.cfg";
+        public static readonly string cfgSharpEyeInspection = @"Mods\CMS21GameplayPlus\SharpEyeInspection.cfg";
     }
 
     public static class GlobalState
     {
         public static bool IsGarageSceneActive;
+        public static bool IsJunkyardSceneActive;
         public static int LoadedProfileId;
         public static GameManager GameManager;
     }

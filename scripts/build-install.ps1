@@ -26,7 +26,8 @@ $steamGameRelativePath = "steamapps\common\Car Mechanic Simulator 2021"
 # Paths are relative to both resources\ and install\CMS21GameplayPlus\.
 $releaseConfigFiles = @(
     "CMS21GameplayPlus.cfg",
-    "Repairability.cfg"
+    "Repairability.cfg",
+    "SharpEyeInspection.cfg"
 )
 
 $releaseUiSettingsFiles = @(

@@ -117,23 +117,26 @@ service role and consistency with equivalent parts.
 
 ### Sharp Eye examination
 
-Using Examine Mode keeps the game's normal per-system examination flow. Sharp Eye tracks only the
-currently targeted system and shows progress against that system's full configured part
-specification. Physically present parts are examined only by the game's normal examination logic;
-missing parts are never passed to `Examine`, but are treated as already identified so the progress
-counter can still reach the full specification total.
+Selecting Examine Mode activates the Gameplay+ **Sharp Eye** implementation immediately. The
+original per-part examination raycast, mouse-over handling and examination action are suppressed; the
+game mode is retained only as the camera/lifecycle shell for the replacement. At skill level 0 all
+inspection systems are hidden, the vehicle frame remains visible, the unavailable-skill message is
+shown in the central system-name area, and the `Tab` system table is disabled.
 
-Hold `Tab` in Examine Mode to show every inspection system available at the current Sharp Eye
-skill level; systems that require a higher level are hidden while `Tab` is held, and the `Tab`
-control hint remains visible even at level 0. At level 0 all mechanical systems are hidden without
-adding the body overview outline. Systems with installed parts are outlined in white until complete
-and green after completion. Completely disassembled systems are rendered in white until inspected
-and light blue after completion. The body follows the same white/green overview state from level 1,
-while normal hover uses yellow for incomplete targets and green for completed targets. Exhaust and
-downpipe systems become available at level 3. The UI shows how many targets are currently available
-for full inspection and how many are complete. While `Tab` is held, an upper-right system list shows
-every inspectable system in a separate row with an ordinal number and inspected, not inspected or
-unavailable state. Releasing `Tab` hides the list and returns to normal per-system inspection.
+From level 1, the visual layer shows only parts whose systems are available at the current Sharp Eye
+skill level. Installed available parts are white until examined and then use their condition color.
+Physically missing available parts are shown as 70% transparent white previews and become light blue
+after examination. Service-only visuals do not count as examination steps: reservoir/servo/radiator
+caps follow their owning assembly, the oil drain plug follows the oil pan, and `bagnet_1` /
+`korekOleju_1` follow the engine block on every engine that uses those service parts.
+
+Hover selection is resolved directly from the mouse ray against visible Sharp Eye parts and does not
+depend on the character's distance from the system. When several systems overlap the body has the
+lowest priority and is selected only when no inspection system is under the pointer. The hovered
+system supplies the displayed name, progress counter and outline target. Hold the left mouse button
+to examine it, hold `Left Alt` to reset that target, hold `Space` to reset the vehicle inspection, and
+press `Tab` to show or hide the systems table. Exhaust and downpipe systems become available at
+level 3.
 
 The shopping list is prepared for the selected system. Missing configured parts participate in the
 same replacement calculation as installed parts, while compatible 100% parts already available in

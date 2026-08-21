@@ -35,6 +35,14 @@
     <Compile Include="src\Features\BrakeLathe\BrakeLatheExtensionsFeature.cs" />
     <Compile Include="src\Features\Garage\GarageDoorStateFeature.cs" />
     <Compile Include="src\Features\Garage\SharpEyeShoppingListFeature.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeModeReplacement.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeVisualSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeHoverSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyePresentationSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeInspectionSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeInputSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEye\SharpEyeUiSystem.cs" />
+    <Compile Include="src\Features\Garage\SharpEyeInspectionRules.cs" />
     <Compile Include="src\Features\Inventory\WarehouseMountSourceFeature.cs" />
     <Compile Include="src\Features\Locations\AuctionCarPoolFeature.cs" />
     <Compile Include="src\Features\Locations\JunkyardVehicleCountFeature.cs" />
